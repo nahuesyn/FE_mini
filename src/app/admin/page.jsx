@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import BackToSquare from "@/components/BackToSquare";
 
 const HOTSPOTS = [
   {
@@ -65,15 +66,18 @@ export default function AdminPage() {
                 strokeWidth={isHovered ? 2.5 : 0}
                 style={{
                   filter: isHovered
-                    ? `drop-shadow(0 0 6px ${spot.color}) drop-shadow(0 0 14px ${spot.color})`
+                    ? `drop-shadow(0 0 8px ${spot.color})`
                     : "none",
-                  transition: "fill-opacity 0.25s ease, stroke-width 0.2s ease, filter 0.25s ease",
+                  transition: "fill-opacity 0.2s ease, stroke-width 0.15s ease, filter 0.2s ease",
+                  willChange: "fill-opacity, filter",
                 }}
               />
             </g>
           );
         })}
       </svg>
+
+      <BackToSquare />
     </main>
   );
 }

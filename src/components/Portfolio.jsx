@@ -7,6 +7,15 @@ const VIDEO_ASPECT = VIDEO_W / VIDEO_H;
 
 // Star positions stored as % of the VIDEO FRAME (not screen),
 // so they stay accurate across all viewport sizes.
+const METEOR_HEADS = [
+  { vx: 35.8, vy: 44.1 },
+  { vx: 68.6, vy: 27.6 },
+  { vx: 69.0, vy: 63.4 },
+  { vx: 54.4, vy: 40.2 },
+  { vx: 50.5, vy: 57.3 },
+  { vx: 85.0, vy: 31.0 },
+];
+
 const PROJECTS = [
   {
     name: 'Meet Us',
@@ -14,8 +23,8 @@ const PROJECTS = [
     iconImg: '/MeetUslogo.png',
     iconBg: 'linear-gradient(135deg,#ff7043,#ff8a65)',
     url: 'https://meetus-sample1st.pages.dev',
-    vx: 29.9,  // % inside video frame
-    vy: 47.5,
+    vx: METEOR_HEADS[0].vx,
+    vy: METEOR_HEADS[0].vy,
   },
   {
     name: 'Picks',
@@ -23,10 +32,49 @@ const PROJECTS = [
     iconImg: '/PicksIcon.png',
     iconBg: 'linear-gradient(135deg,#f48fb1,#e91e8c)',
     url: 'https://picks-three.vercel.app/onboarding',
-    vx: 61,
-    vy: 27.5,
+    vx: METEOR_HEADS[1].vx,
+    vy: METEOR_HEADS[1].vy,
   },
 ];
+
+function createProjects(portfolioData) {
+  if (!portfolioData?.length) return PROJECTS;
+
+  // Supabase format: has vx, vy, icon_url, icon_bg
+  if ('vx' in portfolioData[0]) {
+    return portfolioData.map((p) => ({
+      name: p.name,
+      url: p.url || '#',
+      iconImg: p.icon_url || null,
+      iconBg: p.icon_bg || 'linear-gradient(135deg,#6ab4ff,#be7dff)',
+      icon: '★',
+      iconFile: null,
+      vx: p.vx,
+      vy: p.vy,
+    }));
+  }
+
+  // InputPage format: name, link, icon (File)
+  const filled = portfolioData.filter((p) => p.name || p.link || p.icon);
+  if (!filled.length) return PROJECTS;
+
+  return filled.map((portfolio, index) => {
+    const meteorHead = METEOR_HEADS[index % METEOR_HEADS.length];
+    const base = PROJECTS[index] ?? {
+      vx: meteorHead.vx,
+      vy: meteorHead.vy,
+      iconBg: 'linear-gradient(135deg,#6ab4ff,#be7dff)',
+    };
+    return {
+      ...base,
+      name: portfolio.name || `Portfolio ${index + 1}`,
+      icon: '★',
+      iconFile: portfolio.icon,
+      iconImg: null,
+      url: portfolio.link || '#',
+    };
+  });
+}
 
 // Calculate where a video-frame % position lands on the actual screen
 // given how object-cover crops the video.
@@ -50,28 +98,44 @@ function calcScreenPos(vx, vy, W, H) {
   }
 }
 
-export default function Portfolio({ visible, isLeaving }) {
+export default function Portfolio({ visible, isLeaving, portfolioData }) {
   const [show, setShow] = useState(false);
   const [frozen, setFrozen] = useState(false);
   const [iconsVisible, setIconsVisible] = useState(false);
   const [openItem, setOpenItem] = useState(null);
-  const [positions, setPositions] = useState(
-    PROJECTS.map(p => ({ x: p.vx, y: p.vy }))
-  );
+  const [iconUrls, setIconUrls] = useState({});
+  const projects = createProjects(portfolioData);
+  const [positions, setPositions] = useState(projects.map(p => ({ x: p.vx, y: p.vy })));
   const videoRef = useRef(null);
   const timersRef = useRef([]);
+
+  useEffect(() => {
+    const nextIconUrls = {};
+
+    projects.forEach((project, index) => {
+      if (project.iconFile instanceof File) {
+        nextIconUrls[index] = URL.createObjectURL(project.iconFile);
+      }
+    });
+
+    setIconUrls(nextIconUrls);
+
+    return () => {
+      Object.values(nextIconUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [projects.length, portfolioData]);
 
   // Recalculate dot positions whenever viewport resizes
   useEffect(() => {
     const update = () => {
       const W = window.innerWidth;
       const H = window.innerHeight;
-      setPositions(PROJECTS.map(p => calcScreenPos(p.vx, p.vy, W, H)));
+      setPositions(projects.map(p => calcScreenPos(p.vx, p.vy, W, H)));
     };
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, []);
+  }, [projects.length]);
 
   useEffect(() => {
     if (visible) {
@@ -93,18 +157,23 @@ export default function Portfolio({ visible, isLeaving }) {
     const video = videoRef.current;
     if (!video) return;
 
-    const freeze = () => {
+    video.currentTime = 0;
+    setFrozen(false);
+    setIconsVisible(false);
+
+    const freezeTimer = setTimeout(() => {
       video.pause();
       setFrozen(true);
-      timersRef.current.push(setTimeout(() => setIconsVisible(true), 400));
-    };
+      timersRef.current.push(setTimeout(() => setIconsVisible(true), 280));
+    }, 3000);
+    timersRef.current.push(freezeTimer);
 
-    video.play().catch(() => { setFrozen(true); setIconsVisible(true); });
-    video.addEventListener('ended', freeze);
-    const safetyId = setTimeout(freeze, 10000);
-    timersRef.current.push(safetyId);
+    video.play().catch(() => {
+      setFrozen(true);
+      setIconsVisible(true);
+    });
 
-    return () => video.removeEventListener('ended', freeze);
+    return () => clearTimeout(freezeTimer);
   }, [show]);
 
   return (
@@ -123,6 +192,7 @@ export default function Portfolio({ visible, isLeaving }) {
         className="absolute inset-0 w-full h-full object-cover z-0"
         src="/PortFolio.mp4"
         muted
+        autoPlay
         playsInline
         preload="auto"
       />
@@ -143,7 +213,7 @@ export default function Portfolio({ visible, isLeaving }) {
         PORTFOLIO STARS
       </p>
 
-      {PROJECTS.map((item, i) => {
+      {projects.map((item, i) => {
         const pos = positions[i];
         return (
           <div
@@ -153,24 +223,32 @@ export default function Portfolio({ visible, isLeaving }) {
               left: `${pos.x}%`,
               top: `${pos.y}%`,
               opacity: iconsVisible ? 1 : 0,
-              transition: `opacity 0.9s ease ${i * 0.55}s`,
+              transform: 'translate(-50%, -50%)',
+              transition: `opacity 0.9s ease ${i * 0.32}s`,
             }}
             onClick={() => setOpenItem(openItem === i ? null : i)}
           >
-            {/* Star dot */}
+            {/* Shooting-star head */}
             <div
-              className="w-4 h-4 rounded-full bg-white transition-all duration-300"
+              className="relative grid h-12 w-12 place-items-center rounded-full transition-all duration-300 sm:h-14 sm:w-14"
               style={{
+                background: 'rgba(255,255,255,0.9)',
+                border: '1px solid rgba(255,255,255,0.95)',
                 boxShadow: openItem === i
-                  ? '0 0 20px 9px rgba(255,255,210,1), 0 0 55px 18px rgba(200,220,255,0.9)'
-                  : '0 0 9px 4px rgba(255,255,210,0.85), 0 0 28px 9px rgba(200,220,255,0.55)',
-                transform: openItem === i ? 'scale(1.5)' : 'scale(1)',
+                  ? '0 0 18px 8px rgba(255,255,225,1), 0 0 70px 24px rgba(168,200,255,0.9)'
+                  : '0 0 12px 5px rgba(255,255,225,0.9), 0 0 38px 13px rgba(168,200,255,0.55)',
+                transform: openItem === i ? 'scale(1.12)' : 'scale(1)',
               }}
             />
+            <div className="absolute inset-1.5 overflow-hidden rounded-full bg-[#061027]">
+              {iconUrls[i] || item.iconImg
+                ? <img src={iconUrls[i] || item.iconImg} alt={item.name} className="h-full w-full object-cover" />
+                : <span className="grid h-full w-full place-items-center text-xl text-white">{item.icon}</span>}
+            </div>
 
             {/* Popup */}
             <div
-              className="absolute bottom-7 left-1/2 w-52 rounded-2xl p-4"
+              className="absolute bottom-16 left-1/2 w-52 rounded-2xl p-4 sm:bottom-[72px]"
               style={{
                 transform: `translateX(-50%) translateY(${openItem === i ? '0' : '10px'})`,
                 background: 'rgba(4,12,35,0.92)',
@@ -182,15 +260,15 @@ export default function Portfolio({ visible, isLeaving }) {
                 transition: 'all 0.3s ease',
               }}
             >
+              <p className="font-bold text-sm mb-3" style={{ color: '#e8f4ff' }}>{item.name}</p>
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-3 overflow-hidden"
                 style={{ background: item.iconBg }}
               >
-                {item.iconImg
-                  ? <img src={item.iconImg} alt={item.name} className="w-full h-full object-cover" />
+                {iconUrls[i] || item.iconImg
+                  ? <img src={iconUrls[i] || item.iconImg} alt={item.name} className="w-full h-full object-cover" />
                   : item.icon}
               </div>
-              <p className="font-bold text-sm mb-2" style={{ color: '#e8f4ff' }}>{item.name}</p>
               {item.url === '#' ? (
                 <span className="text-[11px]" style={{ color: 'rgba(168,200,255,0.5)' }}>링크 준비 중</span>
               ) : (

@@ -19,18 +19,58 @@ const CONNS = [
   [3, 5], // 서브카테고리 → 스파오
 ];
 
-export default function Career({ visible, isLeaving }) {
+function createCareerNodes(careerData) {
+  if (!careerData?.length) return CAREER;
+
+  // Supabase format: has x, y, label_line1, label_line2
+  if ('label_line1' in careerData[0]) {
+    return careerData.map((c) => ({
+      year: c.year ?? '',
+      label: [c.label_line1, c.label_line2].filter(Boolean),
+      x: c.x ?? 100,
+      y: c.y ?? 200,
+    }));
+  }
+
+  // InputPage format: year, title, description
+  const filled = careerData.filter((c) => c.year || c.title || c.description);
+  if (!filled.length) return CAREER;
+
+  return filled.map((career, index) => {
+    const base = CAREER[index] ?? { x: 100 + index * 135, y: index % 2 === 0 ? 170 : 285 };
+    return { ...base, year: career.year || 'YEAR', label: [career.title, career.description].filter(Boolean) };
+  });
+}
+
+function buildConnections(careerData, careerConnections) {
+  // Supabase connections: [{ from_order, to_order }, ...]
+  if (careerConnections?.length) {
+    return careerConnections.map((c) => [c.from_order, c.to_order]);
+  }
+  // Supabase career data → use default CONNS if node count matches
+  if (careerData?.length && 'label_line1' in (careerData[0] ?? {})) {
+    return CONNS;
+  }
+  // InputPage: linear connections
+  const nodes = createCareerNodes(careerData);
+  if (nodes.length <= 1) return [];
+  return nodes.slice(1).map((_, i) => [i, i + 1]);
+}
+
+export default function Career({ visible, isLeaving, careerData, careerConnections }) {
   const [show, setShow] = useState(false);
   const [drawn, setDrawn] = useState(false);
   const [nodesVisible, setNodesVisible] = useState([]);
   const [active, setActive] = useState(null);
   const timersRef = useRef([]);
+  const careers = createCareerNodes(careerData);
+  const connections = buildConnections(careerData, careerConnections);
 
   useEffect(() => {
     if (visible) {
       timersRef.current.push(setTimeout(() => setShow(true), 80));
       timersRef.current.push(setTimeout(() => setDrawn(true), 400));
-      CAREER.forEach((_, i) => {
+      careers.forEach((_, i) => {
         timersRef.current.push(
           setTimeout(() => setNodesVisible(prev => [...prev, i]), 900 + i * 280)
         );
@@ -43,10 +83,10 @@ export default function Career({ visible, isLeaving }) {
       setNodesVisible([]);
       setActive(null);
     }
-  }, [visible]);
+  }, [visible, careers.length]);
 
-  const lineLengths = CONNS.map(([a, b]) =>
-    Math.hypot(CAREER[b].x - CAREER[a].x, CAREER[b].y - CAREER[a].y)
+  const lineLengths = connections.map(([a, b]) =>
+    Math.hypot(careers[b].x - careers[a].x, careers[b].y - careers[a].y)
   );
 
   const nodeOpacity = (i) => {
@@ -99,13 +139,13 @@ export default function Career({ visible, isLeaving }) {
           </defs>
 
           {/* Connection lines */}
-          {CONNS.map(([a, b], i) => {
+          {connections.map(([a, b], i) => {
             const len = lineLengths[i];
             return (
               <line
                 key={i}
-                x1={CAREER[a].x} y1={CAREER[a].y}
-                x2={CAREER[b].x} y2={CAREER[b].y}
+                x1={careers[a].x} y1={careers[a].y}
+                x2={careers[b].x} y2={careers[b].y}
                 stroke="rgba(168,200,255,0.65)"
                 strokeWidth="1.5"
                 filter="url(#glow)"
@@ -120,7 +160,7 @@ export default function Career({ visible, isLeaving }) {
           })}
 
           {/* Nodes */}
-          {CAREER.map((d, i) => {
+          {careers.map((d, i) => {
             const isActive = active === i;
             return (
               <g

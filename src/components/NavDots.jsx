@@ -1,5 +1,5 @@
-const SECTIONS = ['onboarding', 'profile', 'career', 'portfolio'];
-const LABELS = ['시작', '프로필', '경력', '포트폴리오'];
+const SECTIONS = ['onboarding', 'input', 'profile', 'career', 'portfolio'];
+const LABELS = ['시작', '입력', '프로필', '경력', '포트폴리오'];
 
 export default function NavDots({ current, onNavigate }) {
   return (

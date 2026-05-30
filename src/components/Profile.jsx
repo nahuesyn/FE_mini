@@ -1,15 +1,38 @@
 import { useEffect, useState } from 'react';
 
-const INFO = [
-  { icon: '📱', text: '010-9188-0817' },
-  { icon: '✉', text: 'khj020817@naver.com' },
-  { icon: '📸', text: '@achi_jei' },
-  { icon: '🏫', text: '수원대학교' },
-  { icon: '💻', text: '컴퓨터 SW · 미디어 SW (부전공)' },
-];
+const DEFAULT_PROFILE = {
+  name: '김형진',
+  phone: '010-9188-0817',
+  email: 'khj020817@naver.com',
+  instagram: '@achi_jei',
+  school: '수원대학교',
+  major: '컴퓨터 SW',
+  subMajor: '미디어 SW (부전공)',
+  profileImage: null,
+  profileImageUrl: '/Profile.jpg',
+};
 
-export default function Profile({ visible, isLeaving }) {
+function normalize(data) {
+  if (!data) return {};
+  return {
+    ...data,
+    subMajor: data.subMajor ?? data.sub_major,
+    profileImageUrl: data.profile_image_url ?? data.profileImageUrl,
+  };
+}
+
+export default function Profile({ visible, isLeaving, profileData }) {
   const [show, setShow] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('/Profile.jpg');
+  const profile = { ...DEFAULT_PROFILE, ...normalize(profileData) };
+  const majorText = [profile.major, profile.subMajor].filter(Boolean).join(' · ');
+  const info = [
+    { icon: '📱', text: profile.phone },
+    { icon: '✉', text: profile.email },
+    { icon: '📸', text: profile.instagram },
+    { icon: '🏫', text: profile.school },
+    { icon: '💻', text: majorText },
+  ].filter((item) => item.text);
 
   useEffect(() => {
     if (visible) {
@@ -18,6 +41,16 @@ export default function Profile({ visible, isLeaving }) {
       setShow(false);
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (profile.profileImage instanceof File) {
+      const nextUrl = URL.createObjectURL(profile.profileImage);
+      setPreviewUrl(nextUrl);
+      return () => URL.revokeObjectURL(nextUrl);
+    }
+    setPreviewUrl(profile.profileImageUrl || '/Profile.jpg');
+    return undefined;
+  }, [profile.profileImage, profile.profileImageUrl]);
 
   return (
     <section
@@ -54,8 +87,8 @@ export default function Profile({ visible, isLeaving }) {
           }}
         >
           <img
-            src="/Profile.jpg"
-            alt="김형진"
+            src={previewUrl}
+            alt={profile.name}
             className="w-full h-full object-cover object-top"
           />
         </div>
@@ -70,7 +103,7 @@ export default function Profile({ visible, isLeaving }) {
               textShadow: '0 0 20px rgba(168,200,255,0.5)',
             }}
           >
-            김형진
+            {profile.name}
           </h2>
           <p
             className="text-xs tracking-[0.22em] mb-5 sm:mb-7"
@@ -79,7 +112,7 @@ export default function Profile({ visible, isLeaving }) {
             FRONTEND DEVELOPER · CREATOR
           </p>
           <ul className="flex flex-col gap-2 sm:gap-3">
-            {INFO.map((item, i) => (
+            {info.map((item, i) => (
               <li
                 key={i}
                 className="flex items-center justify-center sm:justify-start gap-3"

@@ -1,40 +1,40 @@
 import { useEffect, useState } from 'react';
 
-// SVG viewBox 0 0 100 100 좌표 (% 단위)
-// 빨간 선 기준으로 산등성이/해안선을 따라 구역 분할
+// SVG viewBox 0 0 100 100 좌표 (%)
+// 새 배경 기준: 하늘(상단)·대지(건물+해변 중간)·바다(우측 하단)
 const ZONES = [
   {
     id: 'sky',
-    // 하늘: 상단 전체 ~ 산등성이 첫 번째 선
-    points: '0,0 100,0 100,58 73,56 55,53 40,45 28,35 17,41 0,38',
+    // Follows the upper red boundary: tree/building silhouette -> mountain ridge -> horizon.
+    points: '0,0 100,0 100,65.3 75,65.3 64.6,64.1 60.7,61.3 54.8,61.2 47,56.2 43.9,56.9 37.4,52.6 34.7,50.1 29.5,51 25.7,49.9 23,47.3 21,40.5 19.7,37.8 17.4,37.5 16.4,39.3 16,42.1 13.5,41.2 13.5,36.1 10.7,32.6 8.6,32.6 7,27.2 5.2,22.2 2.5,20.5 0,20.7',
     hoverFill: 'rgba(120,180,255,0.10)',
     label: '하 늘',
-    labelX: '55%',
-    labelY: '28%',
+    labelX: '65%',
+    labelY: '18%',
     labelColor: '#c8e8ff',
     hint: '클릭하여 하늘 세계로',
-    target: 'profile',
+    target: 'input',
   },
   {
     id: 'land',
-    // 대지: 첫 번째 선 ~ 두 번째 선 (해안선)
-    points: '0,38 17,41 28,35 40,45 55,53 73,56 100,58 100,62 68,72 52,76 38,64 0,61',
-    hoverFill: 'rgba(60,160,60,0.12)',
+    // Between the upper red boundary and the lower beach/sea boundary.
+    points: '0,20.7 2.5,20.5 5.2,22.2 7,27.2 8.6,32.6 10.7,32.6 13.5,36.1 13.5,41.2 16,42.1 16.4,39.3 17.4,37.5 19.7,37.8 21,40.5 23,47.3 25.7,49.9 29.5,51 34.7,50.1 37.4,52.6 43.9,56.9 47,56.2 54.8,61.2 60.7,61.3 64.6,64.1 75,65.3 100,65.3 74.8,65.3 68,65 60.7,63.9 53,64.5 49,67.5 45,71 44,75.2 45,80.2 48,85.2 53,91 58,96 62.9,100 0,100',
+    hoverFill: 'rgba(60,160,60,0.11)',
     label: '대 지',
-    labelX: '13%',
-    labelY: '55%',
+    labelX: '24%',
+    labelY: '72%',
     labelColor: '#b0e8a0',
     hint: '준비 중',
     target: null,
   },
   {
     id: 'sea',
-    // 바다: 두 번째 선 ~ 화면 하단
-    points: '0,61 38,64 52,76 68,72 100,62 100,100 0,100',
-    hoverFill: 'rgba(0,80,210,0.14)',
+    // Follows the lower red boundary: beach curve -> sea horizon.
+    points: '44,75.2 45,71 49,67.5 53,64.5 60.7,63.9 68,65 74.8,65.3 100,65.3 100,100 62.9,100 58,96 53,91 48,85.2 45,80.2',
+    hoverFill: 'rgba(0,80,210,0.13)',
     label: '바 다',
     labelX: '78%',
-    labelY: '78%',
+    labelY: '74%',
     labelColor: '#80c8ff',
     hint: '준비 중',
     target: null,
@@ -43,10 +43,19 @@ const ZONES = [
 
 export default function Onboarding({ onEnter, isLeaving }) {
   const [visible, setVisible] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
   const [hovered, setHovered] = useState(null);
   const [toast, setToast] = useState(false);
 
-  useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
+  useEffect(() => {
+    const visibleTimer = setTimeout(() => setVisible(true), 100);
+    const introTimer = setTimeout(() => setIntroDone(true), 2800);
+
+    return () => {
+      clearTimeout(visibleTimer);
+      clearTimeout(introTimer);
+    };
+  }, []);
 
   const handleClick = (zone) => {
     if (zone.target) {
@@ -61,7 +70,7 @@ export default function Onboarding({ onEnter, isLeaving }) {
     <section
       className="relative w-full h-screen overflow-hidden"
       style={{
-        backgroundImage: "url('/bg_onboarding.jpg')",
+        backgroundImage: "url('/온보딩화면.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         transform: isLeaving ? 'scale(2.6)' : visible ? 'scale(1)' : 'scale(1.08)',
@@ -71,33 +80,33 @@ export default function Onboarding({ onEnter, isLeaving }) {
           : 'opacity 1.6s ease, transform 1.6s ease',
       }}
     >
-      {/* Base overlay */}
-      <div className="absolute inset-0 bg-black/25 z-0" />
+      {/* 어두운 오버레이 */}
+      <div className="absolute inset-0 bg-black/30 z-0" />
 
-      {/* Nebula glow */}
+      {/* 상단 성운 글로우 */}
       <div
         className="absolute inset-0 z-0"
         style={{
           background:
-            'radial-gradient(ellipse 60% 40% at 55% 28%, rgba(20,50,120,0.32) 0%, transparent 70%)',
+            'radial-gradient(ellipse 60% 40% at 65% 25%, rgba(20,50,120,0.28) 0%, transparent 70%)',
         }}
       />
 
-      {/* SVG 구역 레이어 */}
+      {/* SVG 구역 */}
       <svg
         className="absolute inset-0 w-full h-full z-[5]"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
+        style={{
+          pointerEvents: introDone ? 'auto' : 'none',
+        }}
       >
         {ZONES.map((zone) => (
           <polygon
             key={zone.id}
             points={zone.points}
             fill={hovered === zone.id ? zone.hoverFill : 'transparent'}
-            style={{
-              cursor: 'pointer',
-              transition: 'fill 0.35s ease',
-            }}
+            style={{ cursor: introDone ? 'pointer' : 'default', transition: 'fill 0.35s ease' }}
             onClick={() => handleClick(zone)}
             onMouseEnter={() => setHovered(zone.id)}
             onMouseLeave={() => setHovered(null)}
@@ -129,46 +138,56 @@ export default function Onboarding({ onEnter, isLeaving }) {
             >
               {zone.label}
             </p>
-            <p
-              className="text-xs tracking-widest"
-              style={{ color: 'rgba(255,255,255,0.65)' }}
-            >
+            <p className="text-xs tracking-widest" style={{ color: 'rgba(255,255,255,0.65)' }}>
               {zone.hint}
             </p>
           </div>
         );
       })}
 
-      {/* 중앙 텍스트 (hover 시 숨김) */}
+      {/* 중앙 텍스트 — 디자인 레퍼런스 기준 */}
       <div
         className="absolute inset-0 flex items-center justify-center z-[8] pointer-events-none"
         style={{
-          opacity: hovered ? 0 : visible ? 1 : 0,
-          transition: 'opacity 0.4s ease',
+          opacity: !introDone ? 0 : visible ? 1 : 0,
+          transform: `translateY(${introDone ? '0' : '10px'})`,
+          transition: 'opacity 0.7s ease, transform 0.7s ease',
         }}
       >
         <div className="text-center px-6">
           <h1
-            className="font-bold leading-relaxed mb-6"
+            className="font-bold leading-snug mb-4 text-white"
             style={{
-              fontSize: 'clamp(1.9rem, 4.5vw, 3.8rem)',
-              textShadow: '0 0 40px rgba(168,200,255,0.55), 0 2px 20px rgba(0,0,0,0.9)',
+              fontSize: 'clamp(2rem, 5.5vw, 4.2rem)',
+              textShadow: '0 2px 32px rgba(0,0,0,0.8), 0 0 60px rgba(168,200,255,0.3)',
+              letterSpacing: '0',
             }}
           >
-            "{' '}
-            <span style={{ color: '#a8d8ff', textShadow: '0 0 28px rgba(168,200,255,0.9)' }}>
-              하늘
-            </span>
-            , 대지, 바다 "<br />
-            세계가 있습니다.<br />
-            어디서부터 시작하시겠어요?
+            당신의 세계는<br />
+            어디에서 시작되나요?
           </h1>
           <p
-            className="text-sm tracking-widest float-hint"
-            style={{ color: 'rgba(200,230,255,0.75)' }}
+            className="text-sm sm:text-base float-hint"
+            style={{ color: 'rgba(220,235,255,0.75)' }}
           >
-            ▲ 하늘 · 대지 · 바다를 클릭하여 탐험하세요
+            하늘 · 대지 · 바다 중 하나를 선택하세요
           </p>
+        </div>
+      </div>
+
+      <div
+        className="absolute inset-0 z-[12] flex items-center justify-center pointer-events-none"
+        style={{
+          opacity: introDone ? 0 : 1,
+          transition: 'opacity 0.8s ease',
+        }}
+      >
+        <div className="onboarding-intro text-center px-6">
+          <img
+            src="/Letrio_Logo.png"
+            alt="Le Trio"
+            className="onboarding-intro-logo mx-auto w-64 invert sm:w-88 md:w-96"
+          />
         </div>
       </div>
 

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- 배경: 진한 남색 둥근 사각형 -->
+  <rect width="32" height="32" rx="7" fill="#0d1b2e"/>
+
+  <!-- 별들 -->
+  <circle cx="5"  cy="5"  r="0.9" fill="#e0e7ff" opacity="0.75"/>
+  <circle cx="27" cy="4"  r="0.7" fill="#e0e7ff" opacity="0.55"/>
+  <circle cx="16" cy="3"  r="0.55" fill="#c7d2fe" opacity="0.8"/>
+  <circle cx="25" cy="9"  r="0.5" fill="#e0e7ff" opacity="0.45"/>
+  <circle cx="4"  cy="11" r="0.4" fill="#c7d2fe" opacity="0.5"/>
+
+  <!-- 굴뚝 (지붕 뒤) -->
+  <rect x="20" y="8" width="2.5" height="6" rx="0.5" fill="#94a3b8"/>
+
+  <!-- 지붕 -->
+  <polygon points="5.5,17.5 16,7 26.5,17.5" fill="#dde3ed"/>
+  <!-- 지붕 음영 오른쪽 -->
+  <polygon points="16,7 26.5,17.5 16,17.5" fill="#c8d1df"/>
+  <!-- 지붕 테두리 -->
+  <polygon points="5.5,17.5 16,7 26.5,17.5" fill="none" stroke="#b8c4d4" stroke-width="0.4"/>
+
+  <!-- 집 몸체 -->
+  <rect x="7.5" y="17" width="17" height="12" rx="0.5" fill="#f0f4fa"/>
+  <!-- 집 몸체 오른쪽 음영 -->
+  <rect x="16" y="17" width="8.5" height="12" rx="0" fill="#e2e8f3" opacity="0.5"/>
+
+  <!-- 문 -->
+  <rect x="13.5" y="21.5" width="5" height="7.5" rx="1" fill="#1e40af"/>
+  <!-- 문 손잡이 -->
+  <circle cx="17.5" cy="25.5" r="0.55" fill="#60a5fa"/>
+
+  <!-- 왼쪽 창문 -->
+  <rect x="9" y="19" width="4" height="3.5" rx="0.5" fill="#bfdbfe"/>
+  <!-- 창문 십자 -->
+  <line x1="11" y1="19" x2="11"  y2="22.5" stroke="#ffffff" stroke-width="0.35" opacity="0.55"/>
+  <line x1="9"  y1="20.7" x2="13" y2="20.7" stroke="#ffffff" stroke-width="0.35" opacity="0.55"/>
+  <!-- 창문 따뜻한 빛 -->
+  <rect x="9" y="19" width="4" height="3.5" rx="0.5" fill="#fde68a" opacity="0.22"/>
+
+  <!-- 오른쪽 창문 -->
+  <rect x="19" y="19" width="4" height="3.5" rx="0.5" fill="#bfdbfe"/>
+  <!-- 창문 십자 -->
+  <line x1="21" y1="19" x2="21"  y2="22.5" stroke="#ffffff" stroke-width="0.35" opacity="0.55"/>
+  <line x1="19" y1="20.7" x2="23" y2="20.7" stroke="#ffffff" stroke-width="0.35" opacity="0.55"/>
+  <!-- 창문 따뜻한 빛 -->
+  <rect x="19" y="19" width="4" height="3.5" rx="0.5" fill="#fde68a" opacity="0.22"/>
+
+  <!-- 땅 라인 -->
+  <rect x="4" y="29" width="24" height="0.6" rx="0.3" fill="#60a5fa" opacity="0.18"/>
+</svg>

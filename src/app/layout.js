@@ -1,8 +1,11 @@
 import "../styles/globals.css";
 
 export const metadata = {
-  title: "My Village",
+  title: "My Village 🏡",
   description: "인터랙티브 마을을 탐험하며 발견하는 포트폴리오",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }) {

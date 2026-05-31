@@ -1,7 +1,7 @@
 import "../styles/globals.css";
 
 export const metadata = {
-  title: "마을 포트폴리오",
+  title: "My Village",
   description: "인터랙티브 마을을 탐험하며 발견하는 포트폴리오",
 };
 

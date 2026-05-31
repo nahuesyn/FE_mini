@@ -1,6 +1,6 @@
 "use client";
 
-import { FaHtml5, FaCss3Alt, FaReact, FaJava, FaGitAlt, FaInstagram } from "react-icons/fa";
+import { FaHtml5, FaCss3Alt, FaReact, FaJava, FaGitAlt } from "react-icons/fa";
 import { SiJavascript, SiSupabase, SiTistory } from "react-icons/si";
 
 const TECH_ICONS = [
@@ -39,7 +39,7 @@ export default function ProfileModal({ onClose }) {
         {/* 닫기 버튼 */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full transition-all hover:opacity-80"
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full transition hover:opacity-80"
           style={{ background: "rgba(201,168,76,0.1)", color: "rgba(245,230,200,0.5)", fontSize: 16, border: "1px solid rgba(201,168,76,0.2)" }}
         >
           ×
@@ -51,7 +51,6 @@ export default function ProfileModal({ onClose }) {
             className="w-16 h-16 rounded-2xl shrink-0 overflow-hidden"
             style={{ border: "1px solid rgba(201,168,76,0.3)" }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/babogaeguri.png"
               alt="프로필"
@@ -98,19 +97,18 @@ export default function ProfileModal({ onClose }) {
         <div style={{ borderTop: "1px solid rgba(201,168,76,0.12)" }} />
 
         {/* 링크 버튼 */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {[
-            { href: "https://github.com/nahuesyn",         label: "GitHub",      icon: <FaGitAlt size={13} /> },
-            { href: "mailto:anhs_0218@naver.com",           label: "이메일",      icon: <span>✉</span> },
-            { href: "https://eong11.tistory.com/?page=1",  label: "Tistory",     icon: <SiTistory size={13} /> },
-            { href: "https://www.instagram.com/",           label: "Instagram",   icon: <FaInstagram size={13} /> },
+            { href: "mailto:anhs_0218@naver.com",          label: "이메일",  icon: <span>✉</span> },
+            { href: "https://github.com/nahuesyn",         label: "GitHub",  icon: <FaGitAlt size={13} /> },
+            { href: "https://eong11.tistory.com/?page=1",  label: "Tistory", icon: <SiTistory size={13} /> },
           ].map(({ href, label, icon }) => (
             <a
               key={label}
               href={href}
               target={href.startsWith("mailto") ? undefined : "_blank"}
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition-all hover:opacity-80"
+              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition hover:opacity-80"
               style={{
                 background: "rgba(201,168,76,0.1)",
                 color:      "#C9A84C",

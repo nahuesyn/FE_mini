@@ -1,299 +1,362 @@
 "use client";
 
-// 도서관 — 일간 학습 시각화
-// 온실(/greenhouse) 공부시간 → study_sessions 테이블
-// 기록(/study) 게시글     → posts 테이블
-// TODO: Supabase 연동
+// 도서관 — Study에서 작성한 과목별 학습 노트를 최신순으로 열람
+// village_posts 테이블만 사용
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import BackToSquare from "@/components/BackToSquare";
 import PageBackground from "@/components/PageBackground";
-import { SUBJECTS as SUBJECT_LIST, subjectByName } from "@/lib/subjects";
+import { SUBJECTS as SUBJECT_LIST } from "@/lib/subjects";
+import { supabase } from "@/lib/supabase";
 
 /* ─── 상수 ─── */
-const BG_STYLE = {
-  backgroundImage: "url('/images/library.png')",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-};
-
 const PANEL = {
-  background: "rgba(8,16,40,0.58)",
+  background:     "rgba(8,16,40,0.58)",
   backdropFilter: "blur(14px)",
-  border: "1px solid rgba(96,165,250,0.18)",
-  borderRadius: "16px",
-  padding: "20px",
+  border:         "1px solid rgba(96,165,250,0.18)",
+  borderRadius:   "16px",
+  padding:        "20px",
 };
 
-// 공통 과목 목록에서 name → 객체 맵 생성
-const SUBJECTS = Object.fromEntries(SUBJECT_LIST.map((s) => [s.name, s]));
-
-/* ─── Mock 데이터 (TODO: Supabase study_sessions / posts) ─── */
-const MOCK_SESSIONS = {
-  "2026-05-28": [
-    { subject: "수학", seconds: 7200 },
-    { subject: "코딩", seconds: 5400 },
-    { subject: "영어", seconds: 3600 },
-  ],
-  "2026-05-27": [
-    { subject: "수학", seconds: 3600 },
-    { subject: "코딩", seconds: 9000 },
-  ],
-  "2026-05-26": [
-    { subject: "영어", seconds: 7200 },
-    { subject: "역사", seconds: 1800 },
-  ],
-};
-
-const MOCK_POSTS = {
-  "2026-05-28": [
-    { id: 1, title: "미적분 기초 개념 정리", content: "극한, 연속, 미분의 정의와 예제...", categories: ["수학"], keywords: ["극한", "미분"] },
-    { id: 2, title: "React Hooks 심화", content: "useCallback, useMemo 차이점과 활용...", categories: ["코딩"], keywords: ["React", "hooks"] },
-  ],
-  "2026-05-27": [
-    { id: 3, title: "코딩 테스트 풀이", content: "BFS/DFS 문제 패턴 정리...", categories: ["코딩"], keywords: ["알고리즘", "BFS"] },
-  ],
-};
+/* subjects.js 기본 맵 */
+const SUBJECTS_DEFAULT = Object.fromEntries(SUBJECT_LIST.map((s) => [s.name, s]));
 
 /* ─── 유틸 ─── */
-const toKey  = (d) => d.toISOString().split("T")[0];
-const fmtKo  = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
-const fmtH   = (s) => {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return h > 0 ? `${h}h ${m > 0 ? m + "m" : ""}`.trim() : `${m}m`;
+const fmtKo = (dateStr) => {
+  if (!dateStr || typeof dateStr !== "string") return "날짜 없음";
+  const parts = dateStr.split("-");
+  if (parts.length < 3) return dateStr;
+  const [y, m, d] = parts;
+  return `${y}년 ${parseInt(m, 10)}월 ${parseInt(d, 10)}일`;
 };
 
-const BOOK_WIDTHS  = [10, 8, 13, 9, 12, 7, 11, 8, 14, 9];
-const BOOK_HEIGHTS = [62, 72, 55, 68, 58, 75, 50, 65, 60, 70];
+const toArr = (v) => (Array.isArray(v) ? v : []);
 
-/* ─── 컴포넌트 ─── */
+/* 카테고리 색상: subjectMap(localStorage) → subjects.js → fallback */
+const resolveStyle = (name, subjectMap) => {
+  const ls = subjectMap[name];
+  if (ls) return { color: ls.color, bg: ls.bg || `${ls.color}22`, border: ls.border || `${ls.color}66` };
+  const def = SUBJECTS_DEFAULT[name];
+  if (def) return { color: def.color, bg: def.bg, border: def.border };
+  return { color: "#94a3b8", bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)" };
+};
+
 export default function LibraryPage() {
-  const router  = useRouter();
-  const [date,  setDate]  = useState(new Date());
-  const [view,  setView]  = useState("day"); // "day" | "calendar"
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [posts,           setPosts]           = useState([]);
 
-  /* 캘린더용 표시 월 */
-  const [calYM, setCalYM] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() });
+  /* ─── 편집 상태 ─── */
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editPost,      setEditPost]      = useState(null);
+  const [editKeyword,   setEditKeyword]   = useState("");
 
-  const key      = toKey(date);
-  const sessions = MOCK_SESSIONS[key] || [];
-  const posts    = MOCK_POSTS[key]    || [];
+  /* localStorage를 useEffect로 읽어 state로 관리 */
+  const [subjectMap,  setSubjectMap]  = useState({});
+  const [subjectList, setSubjectList] = useState([]);
 
-  /* 과목별 합산 */
-  const grouped = sessions.reduce((acc, { subject, seconds }) => {
-    acc[subject] = (acc[subject] || 0) + seconds;
-    return acc;
-  }, {});
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("village-subjects");
+      if (saved) {
+        const list = JSON.parse(saved);
+        setSubjectMap(Object.fromEntries(list.map((s) => [s.name, s])));
+        setSubjectList(list.map((s) => s.name));
+      } else {
+        setSubjectList(SUBJECT_LIST.map((s) => s.name));
+      }
+    } catch {
+      setSubjectList(SUBJECT_LIST.map((s) => s.name));
+    }
+  }, []);
 
-  const totalSec = Object.values(grouped).reduce((a, b) => a + b, 0);
+  /* ─── 데이터 로드 ─── */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const { data, error: sbErr } = await supabase
+          .from("village_posts")
+          .select("*")
+          .order("created_at", { ascending: true });
 
-  const prev = () => { const d = new Date(date); d.setDate(d.getDate() - 1); setDate(d); };
-  const next = () => { const d = new Date(date); d.setDate(d.getDate() + 1); setDate(d); };
+        if (sbErr) {
+          console.error("library load error:", sbErr);
+          setError(sbErr.message);
+          setLoading(false);
+          return;
+        }
 
-  /* 캘린더 계산 */
-  const firstDay     = new Date(calYM.year, calYM.month, 1).getDay();
-  const daysInMonth  = new Date(calYM.year, calYM.month + 1, 0).getDate();
-  const today        = new Date();
+        setPosts(
+          (data || []).map((p) => ({
+            id:         p.id         ?? String(Math.random()),
+            date:       p.date       ?? null,
+            title:      p.title      ?? "제목 없음",
+            content:    p.content    ?? "",
+            categories: toArr(p.categories),
+            keywords:   toArr(p.keywords),
+          }))
+        );
+      } catch (e) {
+        console.error("library unexpected error:", e);
+        setError(e?.message ?? "알 수 없는 오류");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const prevMonth = () => setCalYM(({ year, month }) =>
-    month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 });
-  const nextMonth = () => setCalYM(({ year, month }) =>
-    month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 });
-
-  const selectDay = (d) => {
-    setDate(new Date(calYM.year, calYM.month, d));
-    setView("day");
+  /* ─── 삭제 ─── */
+  const deletePost = async (id) => {
+    if (!window.confirm("이 학습 기록을 삭제할까요?")) return;
+    setPosts((p) => p.filter((x) => x.id !== id));
+    await supabase.from("village_posts").delete().eq("id", id);
   };
 
-  const entries = Object.entries(grouped);
+  /* ─── 수정 ─── */
+  const startEditPost = (post) => {
+    setEditingPostId(post.id);
+    setEditPost({
+      date:       post.date ?? "",
+      title:      post.title,
+      categories: [...post.categories],
+      content:    post.content,
+      keywords:   [...post.keywords],
+    });
+    setEditKeyword("");
+  };
+
+  const cancelEditPost = () => {
+    setEditingPostId(null);
+    setEditPost(null);
+    setEditKeyword("");
+  };
+
+  const saveEditPost = async () => {
+    if (!editPost) return;
+    const updated = {
+      date:       editPost.date || null,
+      title:      editPost.title.trim() || "제목 없음",
+      categories: editPost.categories,
+      content:    editPost.content.trim(),
+      keywords:   editPost.keywords,
+    };
+    setPosts((p) => p.map((x) => x.id === editingPostId ? { ...x, ...updated } : x));
+    await supabase.from("village_posts").update(updated).eq("id", editingPostId);
+    cancelEditPost();
+  };
+
+  const toggleEditCat = (name) => {
+    setEditPost((p) => ({
+      ...p,
+      categories: p.categories.includes(name)
+        ? p.categories.filter((x) => x !== name)
+        : [...p.categories, name],
+    }));
+  };
+
+  const addEditKeyword = () => {
+    const k = editKeyword.trim().replace(/^#/, "");
+    if (k && !editPost.keywords.includes(k)) {
+      setEditPost((p) => ({ ...p, keywords: [...p.keywords, k] }));
+    }
+    setEditKeyword("");
+  };
+
+  /* ─── 카테고리 탭: 온실 과목 목록 기준 ─── */
+  const allSubjects = subjectList.length > 0
+    ? subjectList
+    : [...new Set(posts.flatMap((p) => p.categories).filter(Boolean))];
+
+  /* ─── 필터링 ─── */
+  const filteredPosts = selectedSubject
+    ? posts.filter((p) => p.categories.includes(selectedSubject))
+    : posts;
 
   return (
-    <main className="relative w-full min-h-screen overflow-y-scroll">
+    <main className="relative w-full h-screen overflow-hidden">
       <PageBackground src="/images/library.png" overlay="rgba(4,8,22,0.52)" />
 
-      <div className="relative z-10 flex flex-col items-center p-8 gap-6 min-h-screen">
+      <div className="relative z-10 h-full overflow-y-scroll flex flex-col items-center p-8 gap-6"
+        style={{ background: "rgba(4,8,22,0.35)" }}>
 
         {/* 헤더 */}
-        <div className="w-full max-w-2xl flex items-end justify-between">
-          <div>
-            <h1 className="text-white text-2xl font-bold"
-              style={{ fontFamily: "var(--font-display)", textShadow: "0 2px 12px rgba(0,0,0,0.8)" }}>
-              📖 학습 기록실
-            </h1>
-            <p className="text-blue-200/60 text-sm mt-1">날짜별 공부 시간과 노트를 한눈에</p>
-          </div>
-          {/* 뷰 토글 */}
-          <div className="flex gap-1 p-1 rounded-lg" style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.15)" }}>
-            {[{ label: "날짜", val: "day" }, { label: "캘린더", val: "calendar" }].map(({ label, val }) => (
-              <button key={val} onClick={() => setView(val)}
-                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-                style={{
-                  background: view === val ? "rgba(96,165,250,0.22)" : "transparent",
-                  color:      view === val ? "#60a5fa" : "rgba(96,165,250,0.4)",
-                }}>
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="w-full max-w-2xl">
+          <h1 className="text-white text-2xl font-bold"
+            style={{ fontFamily: "var(--font-display)", textShadow: "0 2px 12px rgba(0,0,0,0.8)" }}>
+            📖 학습 기록실
+          </h1>
+          <p className="text-blue-200/60 text-sm mt-1">과목별 학습 노트를 최신순으로</p>
         </div>
 
-        {/* ── 캘린더 뷰 ── */}
-        {view === "calendar" && (
+        {/* 로딩 */}
+        {loading && (
+          <p className="text-blue-200/30 text-sm">불러오는 중...</p>
+        )}
+
+        {/* 에러 */}
+        {!loading && error && (
           <div className="w-full max-w-2xl" style={PANEL}>
-            {/* 월 네비 */}
-            <div className="flex items-center justify-between mb-4">
-              <button onClick={prevMonth} className="text-blue-300/50 hover:text-blue-300 transition text-xl">‹</button>
-              <span className="text-blue-100 text-sm font-medium">{calYM.year}년 {calYM.month + 1}월</span>
-              <button onClick={nextMonth} className="text-blue-300/50 hover:text-blue-300 transition text-xl">›</button>
-            </div>
-            {/* 요일 헤더 */}
-            <div className="grid grid-cols-7 mb-2">
-              {["일","월","화","수","목","금","토"].map((d) => (
-                <div key={d} className="text-center text-xs py-1" style={{ color: "rgba(96,165,250,0.4)" }}>{d}</div>
-              ))}
-            </div>
-            {/* 날짜 그리드 */}
-            <div className="grid grid-cols-7 gap-1">
-              {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} />)}
-              {Array(daysInMonth).fill(null).map((_, i) => {
-                const d        = i + 1;
-                const dayKey   = `${calYM.year}-${String(calYM.month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-                const isToday  = d === today.getDate() && calYM.month === today.getMonth() && calYM.year === today.getFullYear();
-                const isSelected = dayKey === toKey(date);
-                const hasSess  = !!MOCK_SESSIONS[dayKey];
-                const hasPost  = !!MOCK_POSTS[dayKey];
-
-                return (
-                  <button key={d} onClick={() => selectDay(d)}
-                    className="aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-all hover:opacity-80"
-                    style={{
-                      background: isSelected ? "rgba(96,165,250,0.3)" : isToday ? "rgba(96,165,250,0.12)" : "transparent",
-                      color:      isSelected ? "#fff" : isToday ? "#60a5fa" : "rgba(220,235,255,0.7)",
-                      border:    `1px solid ${isSelected ? "rgba(96,165,250,0.6)" : isToday ? "rgba(96,165,250,0.3)" : "transparent"}`,
-                    }}>
-                    {d}
-                    {/* 기록 있는 날 점 표시 */}
-                    <div className="flex gap-0.5 mt-0.5">
-                      {hasSess && <div className="w-1 h-1 rounded-full" style={{ background: "#4ade80" }} />}
-                      {hasPost && <div className="w-1 h-1 rounded-full" style={{ background: "#60a5fa" }} />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {/* 범례 */}
-            <div className="flex gap-4 mt-4 justify-end">
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400" /> 공부 기록
-              </div>
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" /> 학습 노트
-              </div>
-            </div>
+            <p className="text-red-400/80 text-sm text-center py-2">오류: {error}</p>
           </div>
         )}
 
-        {/* ── 날짜 네비게이션 (날짜 뷰) ── */}
-        {view === "day" && (
-          <div className="w-full max-w-2xl flex items-center justify-between"
-            style={{ ...PANEL, padding: "12px 24px" }}>
-            <button onClick={prev}
-              className="text-blue-300/50 hover:text-blue-300 transition-colors text-2xl leading-none">‹</button>
-            <div className="text-center">
-              <p className="text-blue-100 text-sm font-medium">{fmtKo(date)}</p>
-              {totalSec > 0 && (
-                <p className="text-blue-300/50 text-xs mt-0.5">총 {fmtH(totalSec)} 학습</p>
-              )}
-            </div>
-            <button onClick={next}
-              className="text-blue-300/50 hover:text-blue-300 transition-colors text-2xl leading-none">›</button>
-          </div>
-        )}
-
-        {/* ── 날짜 뷰 콘텐츠 ── */}
-        {view === "day" && entries.length > 0 ? (
-          <div className="w-full max-w-2xl flex gap-3">
-            {entries.map(([subj, secs]) => {
-              const s = SUBJECTS[subj] || SUBJECTS["기타"];
+        {/* ── 과목 탭 ── */}
+        {!loading && !error && allSubjects.length > 0 && posts.length > 0 && (
+          <div className="w-full max-w-2xl flex gap-2 flex-wrap">
+            <button
+              onClick={() => setSelectedSubject(null)}
+              className="px-4 py-1.5 rounded-full text-xs font-medium"
+              style={{
+                background: selectedSubject === null ? "rgba(96,165,250,0.22)" : "rgba(96,165,250,0.06)",
+                color:      selectedSubject === null ? "#60a5fa"                : "rgba(96,165,250,0.45)",
+                border:    `1px solid ${selectedSubject === null ? "rgba(96,165,250,0.4)" : "rgba(96,165,250,0.15)"}`,
+              }}>
+              전체
+            </button>
+            {allSubjects.map((name) => {
+              const s      = resolveStyle(name, subjectMap);
+              const active = selectedSubject === name;
               return (
-                <div key={subj}
-                  className="flex-1 flex flex-col items-center gap-1.5 py-4 px-2 rounded-2xl transition-all"
-                  style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                  <span className="text-xs font-medium" style={{ color: s.color }}>{subj}</span>
-                  <span className="text-xl font-bold" style={{ color: s.color }}>{fmtH(secs)}</span>
-                </div>
+                <button key={name}
+                  onClick={() => setSelectedSubject(name)}
+                  className="px-4 py-1.5 rounded-full text-xs font-medium"
+                  style={{
+                    background: active ? s.bg                    : "rgba(255,255,255,0.04)",
+                    color:      active ? s.color                 : "rgba(220,235,255,0.4)",
+                    border:    `1px solid ${active ? s.border : "rgba(255,255,255,0.08)"}`,
+                  }}>
+                  {name}
+                </button>
               );
             })}
           </div>
-        ) : view === "day" ? (
+        )}
+
+        {/* ── 기록 없음 ── */}
+        {!loading && !error && filteredPosts.length === 0 && (
           <div className="w-full max-w-2xl" style={PANEL}>
-            <p className="text-blue-200/30 text-sm text-center py-2">이 날의 학습 기록이 없어요 📭</p>
+            <p className="text-blue-200/30 text-sm text-center py-4">
+              {posts.length === 0
+                ? "내 방 → 학습기록에서 오늘 공부한 내용을 작성해봐요 📝"
+                : "해당 과목의 기록이 없어요 📭"}
+            </p>
           </div>
-        ) : null}
+        )}
 
-        {/* 카테고리별 책장 */}
-        {view === "day" && <div className="w-full max-w-2xl" style={PANEL}>
-          <p className="text-blue-200/50 text-xs mb-5">카테고리별 책장</p>
+        {/* ── 포스트 카드 ── */}
+        {!loading && !error && filteredPosts.map((post) => (
+          <div key={post.id} className="group w-full max-w-2xl relative" style={PANEL}>
 
-          {entries.length === 0 ? (
-            <p className="text-blue-200/25 text-xs text-center py-3">기록이 없습니다</p>
-          ) : (
-            <div className="flex flex-col gap-5">
-              {entries.map(([subj, secs]) => {
-                const s          = SUBJECTS[subj] || SUBJECTS["기타"];
-                const bookCount  = Math.max(2, Math.ceil(secs / 900)); // 15분 = 책 1권
-                return (
-                  <div key={subj} className="flex items-end gap-3">
-                    {/* 과목 라벨 */}
-                    <span className="text-xs w-8 shrink-0 text-right" style={{ color: s.color, paddingBottom: 4 }}>
-                      {subj}
-                    </span>
+            {editingPostId === post.id && editPost ? (
+              /* ── 편집 폼 ── */
+              <div className="flex flex-col gap-3">
 
-                    {/* 책 스파인 */}
-                    <div className="flex items-end gap-[3px]"
-                      style={{ borderBottom: `1px solid rgba(96,165,250,0.15)`, paddingBottom: 0 }}>
-                      {Array(bookCount).fill(null).map((_, i) => (
-                        <div key={i}
-                          className="rounded-t-sm transition-all"
-                          style={{
-                            width:      BOOK_WIDTHS[i % BOOK_WIDTHS.length],
-                            height:     BOOK_HEIGHTS[i % BOOK_HEIGHTS.length],
-                            background: s.bookPalette[i % s.bookPalette.length],
-                            opacity:    0.65 + (i % 3) * 0.1,
-                          }}
-                        />
-                      ))}
-                    </div>
+                {/* 날짜 */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs shrink-0" style={{ color: "rgba(96,165,250,0.5)" }}>날짜</span>
+                  <input type="date" value={editPost.date}
+                    onChange={(e) => setEditPost((p) => ({ ...p, date: e.target.value }))}
+                    className="bg-transparent text-xs font-mono outline-none cursor-pointer"
+                    style={{ color: "rgba(220,235,255,0.7)", colorScheme: "dark" }} />
+                </div>
 
-                    {/* 시간 */}
-                    <span className="text-xs" style={{ color: "rgba(96,165,250,0.45)", paddingBottom: 4 }}>
-                      {fmtH(secs)}
-                    </span>
+                {/* 제목 */}
+                <input value={editPost.title}
+                  onChange={(e) => setEditPost((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="제목"
+                  className="bg-transparent text-sm font-semibold outline-none w-full"
+                  style={{ color: "rgba(255,255,255,0.85)", borderBottom: "1px solid rgba(96,165,250,0.2)", paddingBottom: 5 }} />
+
+                {/* 카테고리 */}
+                <div className="flex gap-2 flex-wrap">
+                  {subjectList.map((name) => {
+                    const s      = resolveStyle(name, subjectMap);
+                    const active = editPost.categories.includes(name);
+                    return (
+                      <button key={name} onClick={() => toggleEditCat(name)}
+                        className="px-3 py-1 rounded-lg text-xs font-medium transition"
+                        style={{
+                          background: active ? s.bg : "rgba(255,255,255,0.04)",
+                          color:      active ? s.color : "rgba(220,235,255,0.4)",
+                          border:    `1px solid ${active ? s.border : "rgba(255,255,255,0.08)"}`,
+                        }}>
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 내용 */}
+                <textarea value={editPost.content}
+                  onChange={(e) => setEditPost((p) => ({ ...p, content: e.target.value }))}
+                  rows={5}
+                  className="bg-transparent text-xs outline-none w-full resize-none"
+                  style={{
+                    color: "rgba(255,255,255,0.75)",
+                    lineHeight: 1.7,
+                    border: "1px solid rgba(96,165,250,0.15)",
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                  }} />
+
+                {/* 키워드 */}
+                <div>
+                  <div className="flex flex-wrap gap-1.5 mb-2 min-h-5">
+                    {editPost.keywords.map((k) => (
+                      <span key={k} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-md"
+                        style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.2)" }}>
+                        #{k}
+                        <button
+                          onClick={() => setEditPost((p) => ({ ...p, keywords: p.keywords.filter((x) => x !== k) }))}
+                          className="opacity-50 hover:opacity-100">×</button>
+                      </span>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>}
+                  <input value={editKeyword}
+                    onChange={(e) => setEditKeyword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addEditKeyword()}
+                    placeholder="#키워드 입력 후 Enter"
+                    className="bg-transparent text-xs outline-none w-full"
+                    style={{ color: "rgba(220,235,255,0.6)", borderBottom: "1px solid rgba(96,165,250,0.15)", paddingBottom: 3 }} />
+                </div>
 
-        {/* 오늘의 학습 노트 */}
-        {view === "day" && <div className="w-full max-w-2xl" style={PANEL}>
-          <p className="text-blue-200/50 text-xs mb-3">학습 노트</p>
-          {posts.length === 0 ? (
-            <p className="text-blue-200/25 text-xs text-center py-3">작성된 노트가 없어요</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {posts.map((post) => (
-                <div key={post.id}
-                  className="p-4 rounded-xl cursor-pointer transition-all hover:border-blue-400/30"
-                  style={{ background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.12)" }}>
-                  <p className="text-white/85 text-sm font-medium">{post.title}</p>
-                  <p className="text-white/40 text-xs mt-1 leading-relaxed line-clamp-2">{post.content}</p>
-                  <div className="flex gap-1.5 mt-2.5 flex-wrap">
+                {/* 버튼 */}
+                <div className="flex gap-2 justify-end mt-1">
+                  <button onClick={cancelEditPost}
+                    className="text-xs px-3 py-1.5 rounded transition"
+                    style={{ color: "rgba(220,235,255,0.35)" }}>취소</button>
+                  <button onClick={saveEditPost}
+                    className="text-xs px-4 py-1.5 rounded font-medium transition"
+                    style={{ background: "rgba(96,165,250,0.18)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.35)" }}>
+                    저장
+                  </button>
+                </div>
+              </div>
+
+            ) : (
+              /* ── 카드 뷰 ── */
+              <>
+                {/* 편집 / 삭제 버튼 — hover 시 표시 */}
+                <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+                  <button onClick={() => startEditPost(post)}
+                    className="text-sm leading-none hover:opacity-70 transition">✏️</button>
+                  <button onClick={() => deletePost(post.id)}
+                    className="text-base leading-none transition"
+                    style={{ color: "#f87171", opacity: 0.6 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}>×</button>
+                </div>
+
+                {/* 날짜 + 카테고리 뱃지 */}
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2 pr-14">
+                  <p className="text-blue-200/50 text-xs">{fmtKo(post.date)}</p>
+                  <div className="flex gap-1.5 flex-wrap">
                     {post.categories.map((c) => {
-                      const s = SUBJECTS[c] || SUBJECTS["기타"];
+                      const s = resolveStyle(c, subjectMap);
                       return (
                         <span key={c} className="text-xs px-2 py-0.5 rounded-md"
                           style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
@@ -301,18 +364,33 @@ export default function LibraryPage() {
                         </span>
                       );
                     })}
-                    {post.keywords.map((k) => (
-                      <span key={k} className="text-xs px-2 py-0.5 rounded-md"
+                  </div>
+                </div>
+
+                {/* 제목 */}
+                <p className="text-white/85 text-sm font-semibold mb-1">{post.title}</p>
+
+                {/* 내용 */}
+                {post.content && (
+                  <p className="text-white/45 text-xs leading-relaxed line-clamp-4">{post.content}</p>
+                )}
+
+                {/* 키워드 */}
+                {post.keywords.length > 0 && (
+                  <div className="flex gap-1.5 mt-3 flex-wrap">
+                    {post.keywords.map((k, i) => (
+                      <span key={`${k}-${i}`} className="text-xs px-2 py-0.5 rounded-md"
                         style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.2)" }}>
                         #{k}
                       </span>
                     ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>}
+                )}
+              </>
+            )}
+
+          </div>
+        ))}
 
       </div>
 

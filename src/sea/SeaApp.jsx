@@ -1,3 +1,4 @@
+import './sea.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 
@@ -177,7 +178,7 @@ export default function App() {
   }
 
   return (
-    <div className="sea-theme">
+    <div className="app">
       <button className="admin-toggle" onClick={() => setAdminOpen(true)}>관리자 입력</button>
 
       <Surface />

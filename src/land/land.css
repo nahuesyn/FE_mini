@@ -1,0 +1,41 @@
+
+
+
+
+:root {
+  /* ── 낮 마을 ── */
+  --color-sky: #B8D8EC;
+  --color-ground: #8DB86A;
+  --color-building: #E8D4A8;
+  --color-roof-terra: #C17A3A;
+  --color-wood: #7B5B3A;
+  --color-sage: #7BAF7A;
+  --color-ivory: #F5F0E8;
+  --color-sage-light: #A8C87A;
+
+  /* ── 내 방 영역 (어두운) ── */
+  --color-room-bg: #2C1A0E;
+  --color-room-lamp: #F5E6C8;
+  --color-room-night: #1A2535;
+
+  /* ── 공통 ── */
+  --color-gold: #C9A84C;
+  --color-text: #3A2A10;
+  --color-text-light: #7A5A3A;
+
+  /* ── 폰트 ── */
+  --font-sans: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+  --font-display: 'Gowun Batang', 'Nanum Myeongjo', serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Pretendard Variable', 'Pretendard', var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-ivory);
+}

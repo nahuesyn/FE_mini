@@ -12,19 +12,41 @@ const DEFAULT_PROFILE = {
   profileImageUrl: '/Profile.jpg',
 };
 
+function hasProfileInput(data) {
+  if (!data) return false;
+  return [
+    data.name,
+    data.phone,
+    data.email,
+    data.instagram,
+    data.school,
+    data.major,
+    data.subMajor ?? data.sub_major,
+    data.profileImage,
+    data.profileImageUrl ?? data.profile_image_url,
+  ].some((value) => value !== '' && value !== undefined && value !== null);
+}
+
 function normalize(data) {
   if (!data) return {};
-  return {
-    ...data,
-    subMajor: data.subMajor ?? data.sub_major,
-    profileImageUrl: data.profile_image_url ?? data.profileImageUrl,
-  };
+  return Object.fromEntries(
+    Object.entries({
+      ...data,
+      subMajor: data.subMajor ?? data.sub_major,
+      profileImageUrl: data.profile_image_url ?? data.profileImageUrl,
+    }).filter(([, value]) => value !== '' && value !== undefined && value !== null)
+  );
 }
 
 export default function Profile({ visible, isLeaving, profileData }) {
   const [show, setShow] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('/Profile.jpg');
-  const profile = { ...DEFAULT_PROFILE, ...normalize(profileData) };
+  const [previewUrl, setPreviewUrl] = useState('');
+  const hasCustomProfile = hasProfileInput(profileData);
+  const profile = {
+    ...DEFAULT_PROFILE,
+    profileImageUrl: hasCustomProfile ? '' : DEFAULT_PROFILE.profileImageUrl,
+    ...normalize(profileData),
+  };
   const majorText = [profile.major, profile.subMajor].filter(Boolean).join(' · ');
   const info = [
     { icon: '📱', text: profile.phone },
@@ -48,7 +70,7 @@ export default function Profile({ visible, isLeaving, profileData }) {
       setPreviewUrl(nextUrl);
       return () => URL.revokeObjectURL(nextUrl);
     }
-    setPreviewUrl(profile.profileImageUrl || '/Profile.jpg');
+    setPreviewUrl(profile.profileImageUrl || '');
     return undefined;
   }, [profile.profileImage, profile.profileImageUrl]);
 
@@ -57,8 +79,8 @@ export default function Profile({ visible, isLeaving, profileData }) {
       className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden px-4"
       style={{
         backgroundImage: "url('/bg_triple.jpg')",
-        backgroundSize: 'auto 300%',
-        backgroundPosition: 'center 50%',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center top',
         transform: isLeaving ? 'scale(2.6)' : show ? 'scale(1)' : 'scale(1.4)',
         opacity: isLeaving ? 0 : show ? 1 : 0,
         transition: isLeaving
@@ -66,7 +88,13 @@ export default function Profile({ visible, isLeaving, profileData }) {
           : 'opacity 1.1s ease, transform 1.1s cubic-bezier(0.16,1,0.3,1)',
       }}
     >
-      <div className="absolute inset-0 bg-black/38 z-0" />
+      <div className="absolute inset-0 bg-black/34 z-0" />
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          background: 'linear-gradient(180deg, rgba(2,8,24,0.18) 0%, rgba(2,8,24,0.08) 42%, rgba(2,8,24,0.34) 100%)',
+        }}
+      />
 
       {/* Card — stacks vertically on mobile, horizontal on sm+ */}
       <div
@@ -86,11 +114,15 @@ export default function Profile({ visible, isLeaving, profileData }) {
             border: '1.5px solid rgba(168,200,255,0.28)',
           }}
         >
-          <img
-            src={previewUrl}
-            alt={profile.name}
-            className="w-full h-full object-cover object-top"
-          />
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt={profile.name}
+              className="w-full h-full object-cover object-top"
+            />
+          ) : (
+            <div className="h-full w-full" style={{ background: 'rgba(255,255,255,0.04)' }} />
+          )}
         </div>
 
         {/* Info */}

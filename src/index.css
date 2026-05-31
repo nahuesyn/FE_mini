@@ -207,6 +207,25 @@ body { font-family: 'Pretendard', sans-serif; background: #020818; color: white;
   transform: translateY(-1px);
 }
 
+.input-scroll-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(106,180,255,0.36) rgba(255,255,255,0.06);
+}
+
+.input-scroll-list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.input-scroll-list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+}
+
+.input-scroll-list::-webkit-scrollbar-thumb {
+  background: rgba(106,180,255,0.36);
+  border-radius: 999px;
+}
+
 .input-nebula-drift {
   background:
     radial-gradient(ellipse 38% 28% at 28% 24%, rgba(106,180,255,0.2), transparent 72%),

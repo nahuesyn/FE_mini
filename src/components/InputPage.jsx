@@ -177,10 +177,10 @@ export default function InputPage({ visible, isLeaving, onComplete }) {
           </div>
         </div>
 
-        <div className="min-h-[340px]">
+        <div className="min-h-[340px]" style={{ paddingInline: 'clamp(28px, 4vw, 56px)' }}>
           {currentStep === 0 && (
             <StepPane direction={stepDirection}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="mx-auto grid max-w-[760px] grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
               <Input label="이름" value={formData.profile.name} onChange={(value) => updateProfile('name', value)} />
               <Input label="전화번호" value={formData.profile.phone} onChange={(value) => updateProfile('phone', value)} />
               <Input label="이메일" value={formData.profile.email} onChange={(value) => updateProfile('email', value)} />
@@ -207,46 +207,59 @@ export default function InputPage({ visible, isLeaving, onComplete }) {
 
           {currentStep === 1 && (
             <StepPane direction={stepDirection}>
-            <div className="space-y-4">
-              {formData.careers.map((career, index) => (
-                <div key={index} className="input-card-pop grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-4 rounded-2xl p-4 bg-white/[0.06] border border-white/10">
-                  <Input label="년도" value={career.year} onChange={(value) => updateCareer(index, 'year', value)} />
-                  <Input label="경력 제목" value={career.title} onChange={(value) => updateCareer(index, 'title', value)} />
-                  <div className="sm:col-span-2">
-                    <Input label="설명" value={career.description} onChange={(value) => updateCareer(index, 'description', value)} />
-                  </div>
+            <div className="mx-auto max-w-[760px]">
+              <div className="input-scroll-list max-h-[230px] overflow-y-auto pr-2">
+                <div className="flex flex-col gap-5 pb-1">
+                  {formData.careers.map((career, index) => (
+                    <div key={index} className="input-card-pop grid grid-cols-1 gap-5 rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:grid-cols-[120px_1fr]">
+                      <Input label="년도" value={career.year} onChange={(value) => updateCareer(index, 'year', value)} />
+                      <Input label="경력 제목" value={career.title} onChange={(value) => updateCareer(index, 'title', value)} />
+                      <div className="sm:col-span-2">
+                        <Input label="설명" value={career.description} onChange={(value) => updateCareer(index, 'description', value)} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <button type="button" onClick={addCareer} className="input-add-button text-sm text-[#a8c8ff]">
-                + 경력 추가
-              </button>
+              </div>
+              <div style={{ paddingTop: 16 }}>
+                <button type="button" onClick={addCareer} className="input-add-button text-sm text-[#a8c8ff]">
+                  + 경력 추가
+                </button>
+              </div>
             </div>
             </StepPane>
           )}
 
           {currentStep === 2 && (
             <StepPane direction={stepDirection}>
-            <div className="space-y-4">
-              {formData.portfolios.map((portfolio, index) => (
-                <div key={index} className="input-card-pop grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-2xl p-4 bg-white/[0.06] border border-white/10">
-                  <Input label="포트폴리오 이름" value={portfolio.name} onChange={(value) => updatePortfolio(index, 'name', value)} />
-                  <Input label="링크" value={portfolio.link} onChange={(value) => updatePortfolio(index, 'link', value)} />
-                  <FileInput
-                    label="아이콘 파일(선택)"
-                    file={portfolio.icon}
-                    onChange={(file) => updatePortfolio(index, 'icon', file)}
-                  />
+            <div className="mx-auto max-w-[760px]">
+              <div className="input-scroll-list max-h-[230px] overflow-y-auto pr-2">
+                <div className="flex flex-col gap-5 pb-1">
+                  {formData.portfolios.map((portfolio, index) => (
+                    <div key={index} className="input-card-pop grid grid-cols-1 gap-5 rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:grid-cols-2">
+                      <Input label="포트폴리오 이름" value={portfolio.name} onChange={(value) => updatePortfolio(index, 'name', value)} />
+                      <Input label="링크" value={portfolio.link} onChange={(value) => updatePortfolio(index, 'link', value)} />
+                      <div className="sm:col-span-2">
+                        <FileInput
+                          label="아이콘 파일(선택)"
+                          file={portfolio.icon}
+                          onChange={(file) => updatePortfolio(index, 'icon', file)}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <button type="button" onClick={addPortfolio} className="input-add-button text-sm text-[#a8c8ff]">
-                + 포트폴리오 추가
-              </button>
+              </div>
+              <div style={{ paddingTop: 16 }}>
+                <button type="button" onClick={addPortfolio} className="input-add-button text-sm text-[#a8c8ff]">
+                  + 포트폴리오 추가
+                </button>
+              </div>
             </div>
             </StepPane>
           )}
         </div>
-
-        <div className="mt-8 flex items-center justify-between">
+        <div className="mx-auto mt-8 flex w-full max-w-[760px] items-center justify-between">
           <button
             type="button"
             onClick={() => goToStep(Math.max(currentStep - 1, 0))}

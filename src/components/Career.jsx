@@ -104,9 +104,13 @@ export default function Career({ visible, isLeaving, careerData, careerConnectio
     <section
       className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden gap-4"
       style={{
-        backgroundImage: "url('/bg_triple.jpg')",
-        backgroundSize: 'auto 300%',
-        backgroundPosition: 'center bottom',
+        backgroundImage: [
+          'linear-gradient(90deg, rgba(2,8,24,0.52) 0%, rgba(2,8,24,0.12) 28%, rgba(2,8,24,0.12) 72%, rgba(2,8,24,0.52) 100%)',
+          'radial-gradient(ellipse 70% 72% at 50% 45%, rgba(2,8,24,0.02) 0%, rgba(2,8,24,0.36) 100%)',
+          "url('/bg_triple.jpg')",
+        ].join(', '),
+        backgroundSize: 'cover, cover, cover',
+        backgroundPosition: 'center, center, center top',
         transform: isLeaving
           ? 'scale(2.6)'
           : show ? 'scale(1)' : 'scale(1.4)',
@@ -116,7 +120,7 @@ export default function Career({ visible, isLeaving, careerData, careerConnectio
           : 'opacity 1.1s ease, transform 1.1s cubic-bezier(0.16,1,0.3,1)',
       }}
     >
-      <div className="absolute inset-0 bg-black/42 z-0" />
+      <div className="absolute inset-0 bg-black/36 z-0" />
 
       <p className="relative z-10 font-orbitron text-xs tracking-[0.35em]"
         style={{ color: 'rgba(168,200,255,0.55)' }}>

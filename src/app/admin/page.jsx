@@ -6,6 +6,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BackToSquare from "@/components/BackToSquare";
+import { useAdminAuth } from "@/lib/useAdminAuth";
+import { supabase } from "@/lib/supabase";
 
 const HOTSPOTS = [
   {
@@ -66,10 +68,13 @@ const BG_STYLE = {
 };
 
 export default function AdminPage() {
+  const authed = useAdminAuth();
   const [hoveredId,  setHoveredId]  = useState(null);
   const [tutStep,    setTutStep]    = useState(0);
   const [tutDone,    setTutDone]    = useState(true); // 기본은 숨김
   const router = useRouter();
+
+  if (!authed) return null;
 
   // 첫 방문에만 튜토리얼 자동 시작
   useEffect(() => {
@@ -233,6 +238,22 @@ export default function AdminPage() {
       )}
 
       <BackToSquare />
+
+      {/* 로그아웃 */}
+      <button
+        onClick={() => supabase.auth.signOut()}
+        style={{
+          position: "fixed", bottom: 20, right: 72,
+          background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)",
+          borderRadius: 8, padding: "6px 12px",
+          color: "rgba(248,113,113,0.6)", fontSize: 11, cursor: "pointer",
+          backdropFilter: "blur(8px)", zIndex: 50,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(248,113,113,0.6)")}
+      >
+        로그아웃
+      </button>
     </main>
   );
 }

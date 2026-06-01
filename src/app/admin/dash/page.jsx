@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import MonthDrumPicker from "@/components/MonthDrumPicker";
+import { useAdminAuth } from "@/lib/useAdminAuth";
 
 /* ─── 스타일 상수 ─── */
 const PAGE_BG = { background: "radial-gradient(ellipse at 60% 40%, #0A1520 0%, #060E18 100%)" };
@@ -83,6 +84,7 @@ const rowToProject = (r) => ({
 
 /* ─── 메인 컴포넌트 ─── */
 export default function DashPage() {
+  const authed = useAdminAuth();
   const router = useRouter();
 
   /* 왼쪽 패널 탭 */

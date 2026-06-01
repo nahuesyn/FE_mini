@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SUBJECTS as BASE_SUBJECTS } from "@/lib/subjects";
 import { supabase } from "@/lib/supabase";
+import { useAdminAuth } from "@/lib/useAdminAuth";
 
 const CARD    = { background: "rgba(245,230,200,0.05)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "12px", padding: "16px" };
 const PAGE_BG = { background: "radial-gradient(ellipse at 50% 30%, #1E1406 0%, #0A0804 100%)" };
@@ -14,6 +15,7 @@ const PAGE_BG = { background: "radial-gradient(ellipse at 50% 30%, #1E1406 0%, #
 const DEFAULT_CATEGORIES = BASE_SUBJECTS.map(({ name, color }) => ({ name, color }));
 
 export default function StudyPage() {
+  const authed = useAdminAuth();
   const router = useRouter();
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -63,6 +65,8 @@ export default function StudyPage() {
     setTitle(""); setContent(""); setCategories([]); setKeywords([]); setKeyword("");
     setTimeout(() => setSaved(false), 2500);
   };
+
+  if (!authed) return null;
 
   return (
     <main className="relative w-full min-h-screen flex flex-col items-center p-6 gap-5">

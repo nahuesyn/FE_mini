@@ -447,6 +447,9 @@ export default function DashPage() {
     setEditEvent(null);
   };
 
+  /* ─── 인증 확인 전 렌더링 차단 ─── */
+  if (!authed) return null;
+
   /* ─── 렌더링 ─── */
   return (
     <main className="relative w-full min-h-screen flex flex-col items-center p-6 gap-5">

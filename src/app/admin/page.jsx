@@ -3,11 +3,9 @@
 // 내 방 (Admin) — 허브 페이지
 // greenhouse(온실) / dash(대시보드) / study(기록) 진입점
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BackToSquare from "@/components/BackToSquare";
-import { useAdminAuth } from "@/lib/useAdminAuth";
-import { supabase } from "@/lib/supabase";
 
 const HOTSPOTS = [
   {
@@ -68,20 +66,57 @@ const BG_STYLE = {
 };
 
 export default function AdminPage() {
-  const authed = useAdminAuth();
-  const [hoveredId,  setHoveredId]  = useState(null);
-  const [tutStep,    setTutStep]    = useState(0);
-  const [tutDone,    setTutDone]    = useState(true); // 기본은 숨김
   const router = useRouter();
 
-  if (!authed) return null;
+  /* ─── 비밀번호 모달 상태 ─── */
+  const [locked,  setLocked]  = useState(true);
+  const [pw,      setPw]      = useState("");
+  const [shake,   setShake]   = useState(false);
+  const inputRef = useRef(null);
 
-  // 첫 방문에만 튜토리얼 자동 시작
+  /* ─── 튜토리얼 상태 ─── */
+  const [hoveredId, setHoveredId] = useState(null);
+  const [tutStep,   setTutStep]   = useState(0);
+  const [tutDone,   setTutDone]   = useState(true);
+
+  /* 세션 내 인증 여부 확인 */
   useEffect(() => {
-    if (typeof window !== "undefined" && !localStorage.getItem("admin-tutorial-seen")) {
-      setTutDone(false);
+    if (sessionStorage.getItem("admin-unlocked")) {
+      setLocked(false);
     }
   }, []);
+
+  /* 모달 열릴 때 input 포커스 */
+  useEffect(() => {
+    if (locked) setTimeout(() => inputRef.current?.focus(), 80);
+  }, [locked]);
+
+  /* 첫 방문 튜토리얼 */
+  useEffect(() => {
+    if (!locked && !localStorage.getItem("admin-tutorial-seen")) {
+      setTutDone(false);
+    }
+  }, [locked]);
+
+  /* ─── 입장 처리 (mock: 아무거나 입력하면 통과) ─── */
+  const handleEnter = (e) => {
+    e?.preventDefault();
+    if (!pw.trim()) {
+      /* 빈 입력이면 흔들기 */
+      setShake(true);
+      setTimeout(() => setShake(false), 400);
+      return;
+    }
+    sessionStorage.setItem("admin-unlocked", "1");
+    setLocked(false);
+  };
+
+  /* ─── 나가기 ─── */
+  const handleLock = () => {
+    sessionStorage.removeItem("admin-unlocked");
+    setPw("");
+    setLocked(true);
+  };
 
   const finishTutorial = () => {
     localStorage.setItem("admin-tutorial-seen", "1");
@@ -90,170 +125,240 @@ export default function AdminPage() {
 
   const current    = STEPS[tutStep];
   const isLastStep = tutStep === STEPS.length - 1;
-
-  /* 튜토리얼 단계에서 강조할 건물 id */
   const highlightId = !tutDone ? current.id : null;
 
   return (
     <main className="relative w-full h-screen overflow-hidden" style={BG_STYLE}>
 
-      {/* ── 튜토리얼 오버레이 (비활성 영역 dim) ── */}
-      {!tutDone && current.id && (
+      {/* ── 비밀번호 모달 ── */}
+      {locked && (
         <div
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{ background: "rgba(0,0,0,0.35)" }}
-        />
-      )}
-
-      <svg
-        className="absolute inset-0 w-full h-full"
-        style={{ zIndex: 20 }}
-        viewBox="0 0 1402 788"
-        preserveAspectRatio="xMidYMid slice"
-      >
-        {HOTSPOTS.map((spot) => {
-          const isHovered   = hoveredId === spot.id;
-          const isHighlight = highlightId === spot.id;
-
-          return (
-            <g
-              key={spot.id}
-              style={{ cursor: "pointer" }}
-              onClick={() => router.push(spot.href)}
-              onMouseEnter={() => setHoveredId(spot.id)}
-              onMouseLeave={() => setHoveredId(null)}
-            >
-              <polygon
-                points={spot.points}
-                fill={spot.color}
-                fillOpacity={isHighlight ? 0.28 : isHovered ? 0.22 : 0}
-                stroke={spot.color}
-                strokeWidth={isHighlight ? 3 : isHovered ? 2.5 : 0}
-                strokeOpacity={isHighlight ? 0.9 : 1}
-                style={{
-                  filter: isHighlight
-                    ? `drop-shadow(0 0 16px ${spot.color})`
-                    : isHovered
-                    ? `drop-shadow(0 0 8px ${spot.color})`
-                    : "none",
-                  transition: "fill-opacity 0.25s ease, filter 0.25s ease",
-                  willChange: "fill-opacity, filter",
-                }}
-              />
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* ── 튜토리얼 카드 (우하단) ── */}
-      {!tutDone && (
-        <div
-          className="fixed bottom-20 right-6 z-30 flex flex-col gap-3"
-          style={{ width: 240 }}
+          className="absolute inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(4,8,16,0.72)", backdropFilter: "blur(6px)" }}
         >
-          {/* 단계 점 표시 */}
-          <div className="flex justify-center gap-1.5">
-            {STEPS.map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  width:  i === tutStep ? 18 : 6,
-                  height: 6,
-                  borderRadius: 3,
-                  background: i === tutStep ? current.color : "rgba(255,255,255,0.25)",
-                  transition: "all 0.2s ease",
-                }}
-              />
-            ))}
-          </div>
-
-          {/* 카드 본문 */}
-          <div
+          <form
+            onSubmit={handleEnter}
             style={{
-              background:    "rgba(10,8,6,0.82)",
-              backdropFilter: "blur(16px)",
-              border:        `1px solid ${current.color}44`,
-              borderRadius:  "14px",
-              padding:       "16px 18px",
-              boxShadow:     `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${current.color}22`,
+              display:        "flex",
+              flexDirection:  "column",
+              gap:            14,
+              background:     "rgba(8,16,40,0.85)",
+              backdropFilter: "blur(20px)",
+              border:         "1px solid rgba(96,165,250,0.2)",
+              borderRadius:   18,
+              padding:        "36px 40px",
+              minWidth:       280,
+              boxShadow:      "0 8px 40px rgba(0,0,0,0.6)",
+              transform:      shake ? "translateX(0)" : undefined,
+              animation:      shake ? "shake 0.35s ease" : undefined,
             }}
           >
-            {/* 제목 */}
-            <p
-              className="font-bold text-sm mb-1.5"
-              style={{ color: current.color, fontFamily: "var(--font-display)" }}
-            >
-              {current.title}
-            </p>
-
-            {/* 설명 */}
-            <p
-              className="text-xs leading-relaxed"
-              style={{ color: "rgba(245,230,200,0.7)", whiteSpace: "pre-line" }}
-            >
-              {current.desc}
-            </p>
-
-            {/* 버튼 영역 */}
-            <div className="flex items-center justify-between mt-4">
-              {/* 건너뛰기 / 이전 */}
-              <button
-                onClick={() => tutStep === 0 ? finishTutorial() : setTutStep((s) => s - 1)}
-                className="text-xs transition hover:opacity-80"
-                style={{ color: "rgba(245,230,200,0.35)" }}
-              >
-                {tutStep === 0 ? "건너뛰기" : "← 이전"}
-              </button>
-
-              {/* 다음 / 완료 */}
-              <button
-                onClick={() => isLastStep ? finishTutorial() : setTutStep((s) => s + 1)}
-                className="text-xs font-semibold px-4 py-1.5 rounded-full transition hover:opacity-90 active:scale-95"
-                style={{
-                  background: current.color,
-                  color:      "#0a0806",
-                }}
-              >
-                {isLastStep ? "완료" : "다음 →"}
-              </button>
+            <div style={{ textAlign: "center", marginBottom: 4 }}>
+              <p style={{ fontSize: 28, marginBottom: 6 }}>🏠</p>
+              <h1 style={{ color: "#f1f5f9", fontSize: 16, fontWeight: 700 }}>내 방</h1>
+              <p style={{ color: "rgba(96,165,250,0.4)", fontSize: 11, marginTop: 4 }}>
+                비공개 공간입니다
+              </p>
             </div>
-          </div>
+
+            <input
+              ref={inputRef}
+              type="password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder="비밀번호"
+              autoComplete="off"
+              style={{
+                background:   "rgba(255,255,255,0.05)",
+                border:       "1px solid rgba(96,165,250,0.2)",
+                borderRadius: 8,
+                padding:      "10px 14px",
+                color:        "#e2e8f0",
+                fontSize:     13,
+                outline:      "none",
+                width:        "100%",
+                boxSizing:    "border-box",
+              }}
+            />
+
+            <button
+              type="submit"
+              style={{
+                background:   "rgba(96,165,250,0.18)",
+                border:       "1px solid rgba(96,165,250,0.35)",
+                borderRadius: 8,
+                padding:      "10px",
+                color:        "#60a5fa",
+                fontWeight:   600,
+                fontSize:     13,
+                cursor:       "pointer",
+                transition:   "opacity 0.15s",
+              }}
+            >
+              입장
+            </button>
+          </form>
+
+          {/* shake 애니메이션 */}
+          <style>{`
+            @keyframes shake {
+              0%,100% { transform: translateX(0); }
+              20%      { transform: translateX(-8px); }
+              40%      { transform: translateX(8px); }
+              60%      { transform: translateX(-6px); }
+              80%      { transform: translateX(6px); }
+            }
+          `}</style>
         </div>
       )}
 
-      {/* 튜토리얼 다시보기 버튼 */}
-      {tutDone && (
-        <button
-          onClick={() => { setTutStep(0); setTutDone(false); localStorage.removeItem("admin-tutorial-seen"); }}
-          className="fixed bottom-20 right-6 z-30 text-xs px-3 py-1.5 rounded-full transition hover:opacity-80"
-          style={{
-            background:    "rgba(255,255,255,0.07)",
-            border:        "1px solid rgba(255,255,255,0.18)",
-            color:         "rgba(255,255,255,0.5)",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          ? 도움말
-        </button>
+      {/* ── 방 콘텐츠 (잠금 해제 후) ── */}
+      {!locked && (
+        <>
+          {/* 튜토리얼 dim 오버레이 */}
+          {!tutDone && current.id && (
+            <div
+              className="absolute inset-0 z-10 pointer-events-none"
+              style={{ background: "rgba(0,0,0,0.35)" }}
+            />
+          )}
+
+          <svg
+            className="absolute inset-0 w-full h-full"
+            style={{ zIndex: 20 }}
+            viewBox="0 0 1402 788"
+            preserveAspectRatio="xMidYMid slice"
+          >
+            {HOTSPOTS.map((spot) => {
+              const isHovered   = hoveredId === spot.id;
+              const isHighlight = highlightId === spot.id;
+              return (
+                <g
+                  key={spot.id}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => router.push(spot.href)}
+                  onMouseEnter={() => setHoveredId(spot.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                >
+                  <polygon
+                    points={spot.points}
+                    fill={spot.color}
+                    fillOpacity={isHighlight ? 0.28 : isHovered ? 0.22 : 0}
+                    stroke={spot.color}
+                    strokeWidth={isHighlight ? 3 : isHovered ? 2.5 : 0}
+                    strokeOpacity={isHighlight ? 0.9 : 1}
+                    style={{
+                      filter: isHighlight
+                        ? `drop-shadow(0 0 16px ${spot.color})`
+                        : isHovered
+                        ? `drop-shadow(0 0 8px ${spot.color})`
+                        : "none",
+                      transition: "fill-opacity 0.25s ease, filter 0.25s ease",
+                      willChange: "fill-opacity, filter",
+                    }}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* 튜토리얼 카드 */}
+          {!tutDone && (
+            <div
+              className="fixed bottom-20 right-6 z-30 flex flex-col gap-3"
+              style={{ width: 240 }}
+            >
+              <div className="flex justify-center gap-1.5">
+                {STEPS.map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width:  i === tutStep ? 18 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      background: i === tutStep ? current.color : "rgba(255,255,255,0.25)",
+                      transition: "all 0.2s ease",
+                    }}
+                  />
+                ))}
+              </div>
+              <div
+                style={{
+                  background:    "rgba(10,8,6,0.82)",
+                  backdropFilter: "blur(16px)",
+                  border:        `1px solid ${current.color}44`,
+                  borderRadius:  "14px",
+                  padding:       "16px 18px",
+                  boxShadow:     `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${current.color}22`,
+                }}
+              >
+                <p
+                  className="font-bold text-sm mb-1.5"
+                  style={{ color: current.color, fontFamily: "var(--font-display)" }}
+                >
+                  {current.title}
+                </p>
+                <p
+                  className="text-xs leading-relaxed"
+                  style={{ color: "rgba(245,230,200,0.7)", whiteSpace: "pre-line" }}
+                >
+                  {current.desc}
+                </p>
+                <div className="flex items-center justify-between mt-4">
+                  <button
+                    onClick={() => tutStep === 0 ? finishTutorial() : setTutStep((s) => s - 1)}
+                    className="text-xs transition hover:opacity-80"
+                    style={{ color: "rgba(245,230,200,0.35)" }}
+                  >
+                    {tutStep === 0 ? "건너뛰기" : "← 이전"}
+                  </button>
+                  <button
+                    onClick={() => isLastStep ? finishTutorial() : setTutStep((s) => s + 1)}
+                    className="text-xs font-semibold px-4 py-1.5 rounded-full transition hover:opacity-90 active:scale-95"
+                    style={{ background: current.color, color: "#0a0806" }}
+                  >
+                    {isLastStep ? "완료" : "다음 →"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 튜토리얼 다시보기 */}
+          {tutDone && (
+            <button
+              onClick={() => { setTutStep(0); setTutDone(false); localStorage.removeItem("admin-tutorial-seen"); }}
+              className="fixed bottom-20 right-6 z-30 text-xs px-3 py-1.5 rounded-full transition hover:opacity-80"
+              style={{
+                background:    "rgba(255,255,255,0.07)",
+                border:        "1px solid rgba(255,255,255,0.18)",
+                color:         "rgba(255,255,255,0.5)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              ? 도움말
+            </button>
+          )}
+
+          <BackToSquare />
+
+          {/* 나가기 버튼 */}
+          <button
+            onClick={handleLock}
+            style={{
+              position: "fixed", bottom: 20, right: 72,
+              background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)",
+              borderRadius: 8, padding: "6px 12px",
+              color: "rgba(248,113,113,0.6)", fontSize: 11, cursor: "pointer",
+              backdropFilter: "blur(8px)", zIndex: 50,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(248,113,113,0.6)")}
+          >
+            나가기
+          </button>
+        </>
       )}
-
-      <BackToSquare />
-
-      {/* 로그아웃 */}
-      <button
-        onClick={() => supabase.auth.signOut()}
-        style={{
-          position: "fixed", bottom: 20, right: 72,
-          background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)",
-          borderRadius: 8, padding: "6px 12px",
-          color: "rgba(248,113,113,0.6)", fontSize: 11, cursor: "pointer",
-          backdropFilter: "blur(8px)", zIndex: 50,
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
-        onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(248,113,113,0.6)")}
-      >
-        로그아웃
-      </button>
     </main>
   );
 }

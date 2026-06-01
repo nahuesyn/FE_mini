@@ -7,7 +7,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SUBJECTS } from "@/lib/subjects";
 import { supabase } from "@/lib/supabase";
-import { useAdminAuth } from "@/lib/useAdminAuth";
 
 const CARD    = { background: "rgba(6,20,10,0.55)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "12px", padding: "16px" };
 const PAGE_BG = { background: "radial-gradient(ellipse at 35% 40%, #0A2010 0%, #040E07 100%)" };
@@ -48,8 +47,6 @@ const clearPersistedTimer = () => {
 };
 
 export default function GreenhousePage() {
-  const authed = useAdminAuth();
-
   /* ─── 타이머 상태 — localStorage에서 복원 ─── */
   const [seconds, setSeconds] = useState(() => {
     const p = getPersistedTimer();
@@ -245,8 +242,6 @@ export default function GreenhousePage() {
   };
 
   const currentSubject = subjectList.find((s) => s.id === subject) ?? subjectList[0];
-
-  if (!authed) return null;
 
   return (
     <main className="relative w-full min-h-screen flex flex-col items-center justify-center p-6 gap-5">

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+const LAND_PORTFOLIO_URL = 'https://village-portfolio.pages.dev/';
+
 // SVG viewBox 0 0 100 100 좌표 (%)
 // 새 배경 기준: 하늘(상단)·대지(건물+해변 중간)·바다(우측 하단)
 const ZONES = [
@@ -24,8 +26,9 @@ const ZONES = [
     labelX: '24%',
     labelY: '72%',
     labelColor: '#b0e8a0',
-    hint: '준비 중',
+    hint: '클릭하여 대지 세계로',
     target: null,
+    href: LAND_PORTFOLIO_URL,
   },
   {
     id: 'sea',
@@ -58,6 +61,11 @@ export default function Onboarding({ onEnter, isLeaving }) {
   }, []);
 
   const handleClick = (zone) => {
+    if (zone.href) {
+      window.location.assign(zone.href);
+      return;
+    }
+
     if (zone.target) {
       onEnter(zone.target);
     } else {

@@ -715,10 +715,20 @@ export default function DashPage() {
                               <img src={URL.createObjectURL(editProjThumb)} alt="미리보기"
                                 className="h-14 rounded-lg object-cover w-full" />
                             )}
-                            <input type="file" accept="image/*"
-                              onChange={(e) => setEditProjThumb(e.target.files?.[0] || null)}
-                              className="text-xs"
-                              style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark" }} />
+                            <label className="flex items-center gap-2 cursor-pointer w-fit">
+                              <span className="text-xs px-2 py-0.5 rounded"
+                                style={{ background: "rgba(96,165,250,0.1)", color: "rgba(96,165,250,0.7)", border: "1px solid rgba(96,165,250,0.2)" }}>
+                                파일 선택
+                              </span>
+                              {editProjThumb && (
+                                <span className="text-xs truncate max-w-[120px]" style={{ color: "rgba(96,165,250,0.5)" }}>
+                                  {editProjThumb.name}
+                                </span>
+                              )}
+                              <input type="file" accept="image/*"
+                                onChange={(e) => setEditProjThumb(e.target.files?.[0] || null)}
+                                style={{ display: "none" }} />
+                            </label>
                           </div>
                           {/* 기간 */}
                           <div className="flex items-center gap-2">
@@ -843,10 +853,20 @@ export default function DashPage() {
                     {/* 썸네일 */}
                     <div className="flex flex-col gap-1.5">
                       <span className="text-xs" style={{ color: "rgba(96,165,250,0.45)" }}>썸네일 이미지 (선택)</span>
-                      <input type="file" accept="image/*"
-                        onChange={(e) => setNewProjThumb(e.target.files?.[0] || null)}
-                        className="text-xs"
-                        style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark" }} />
+                      <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <span className="text-xs px-2 py-0.5 rounded"
+                          style={{ background: "rgba(96,165,250,0.1)", color: "rgba(96,165,250,0.7)", border: "1px solid rgba(96,165,250,0.2)" }}>
+                          파일 선택
+                        </span>
+                        {newProjThumb && (
+                          <span className="text-xs truncate max-w-[120px]" style={{ color: "rgba(96,165,250,0.5)" }}>
+                            {newProjThumb.name}
+                          </span>
+                        )}
+                        <input type="file" accept="image/*"
+                          onChange={(e) => setNewProjThumb(e.target.files?.[0] || null)}
+                          style={{ display: "none" }} />
+                      </label>
                       {newProjThumb && (
                         <img src={URL.createObjectURL(newProjThumb)} alt="미리보기"
                           className="h-16 rounded-lg object-cover w-full" />

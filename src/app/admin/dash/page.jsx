@@ -710,12 +710,12 @@ export default function DashPage() {
                           </div>
                           {/* 기간 */}
                           <div className="flex items-center gap-2">
-                            <input type="date" value={editProj.startDate}
+                            <input type="month" value={editProj.startDate ? editProj.startDate.slice(0, 7) : ""}
                               onChange={(e) => setEditProj((v) => ({ ...v, startDate: e.target.value }))}
                               className="flex-1 bg-transparent text-xs outline-none"
                               style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />
                             <span className="text-xs" style={{ color: "rgba(96,165,250,0.3)" }}>~</span>
-                            <input type="date" value={editProj.endDate}
+                            <input type="month" value={editProj.endDate ? editProj.endDate.slice(0, 7) : ""}
                               onChange={(e) => setEditProj((v) => ({ ...v, endDate: e.target.value }))}
                               className="flex-1 bg-transparent text-xs outline-none"
                               style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />
@@ -857,12 +857,12 @@ export default function DashPage() {
                     </div>
                     {/* 기간 */}
                     <div className="flex items-center gap-2">
-                      <input type="date" value={newProject.startDate}
+                      <input type="month" value={newProject.startDate}
                         onChange={(e) => setNewProject((p) => ({ ...p, startDate: e.target.value }))}
                         className="flex-1 bg-transparent text-xs outline-none"
                         style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />
                       <span className="text-xs" style={{ color: "rgba(96,165,250,0.3)" }}>~</span>
-                      <input type="date" value={newProject.endDate}
+                      <input type="month" value={newProject.endDate}
                         onChange={(e) => setNewProject((p) => ({ ...p, endDate: e.target.value }))}
                         className="flex-1 bg-transparent text-xs outline-none"
                         style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />

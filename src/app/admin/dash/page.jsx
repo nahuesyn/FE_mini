@@ -237,15 +237,9 @@ export default function DashPage() {
   const handleDragEnd = () => { dragSrcIdx.current = null; setDragOverId(null); };
 
   /* ─── 핸들러 ─── */
-  /* ─── 프로젝트 핀 토글 ─── */
-  const togglePin = async (proj) => {
-    const next = !proj.pinned;
-    setProjects((p) => p.map((x) => x.id === proj.id ? { ...x, pinned: next } : x));
-    const { error } = await supabase.from("village_projects").update({ pinned: next }).eq("id", proj.id);
-    if (error) {
-      // pinned 컬럼 없으면 로컬 상태만 유지 (Supabase 테이블에 pinned boolean 컬럼 추가 필요)
-      console.warn("togglePin DB 오류 (pinned 컬럼 확인):", error.message);
-    }
+  /* ─── 프로젝트 핀 토글 (로컬 상태만 — DB pinned 컬럼 추가 전까지) ─── */
+  const togglePin = (proj) => {
+    setProjects((p) => p.map((x) => x.id === proj.id ? { ...x, pinned: !x.pinned } : x));
   };
 
   /* ─── 프로젝트 수정 저장 ─── */
@@ -258,7 +252,6 @@ export default function DashPage() {
     const updated = { ...editProj, thumbnailUrl: thumbUrl };
     setProjects((p) => p.map((x) => x.id === editingProjId ? { ...x, ...updated } : x));
 
-    // pinned 제외한 기본 필드 먼저 저장
     const { error } = await supabase.from("village_projects").update({
       name:          editProj.title.trim(),
       description:   editProj.desc,
@@ -273,9 +266,6 @@ export default function DashPage() {
     if (error) {
       console.error("프로젝트 저장 오류:", error.message, error.details, error.hint);
       alert(`저장 실패: ${error.message}`);
-    } else {
-      // 기본 저장 성공 후 pinned도 별도 시도
-      await supabase.from("village_projects").update({ pinned: editProj.pinned }).eq("id", editingProjId);
     }
 
     setEditingProjId(null);

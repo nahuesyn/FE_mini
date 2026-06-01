@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
 export default function LoginPage() {
   const router  = useRouter();
-  const [email,   setEmail]   = useState("");
   const [pw,      setPw]      = useState("");
   const [error,   setError]   = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,26 +24,15 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     const { error } = await supabase.auth.signInWithPassword({
-      email:    email.trim(),
+      email:    ADMIN_EMAIL,
       password: pw,
     });
     setLoading(false);
     if (error) {
-      setError("이메일 또는 비밀번호가 올바르지 않아요.");
+      setError("비밀번호가 올바르지 않아요.");
     } else {
       router.push("/admin");
     }
-  };
-
-  const INPUT = {
-    background:   "rgba(255,255,255,0.05)",
-    border:       "1px solid rgba(96,165,250,0.2)",
-    borderRadius: 8,
-    padding:      "10px 14px",
-    color:        "#e2e8f0",
-    fontSize:     13,
-    outline:      "none",
-    width:        "100%",
   };
 
   return (
@@ -72,22 +62,23 @@ export default function LoginPage() {
         </div>
 
         <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="이메일"
-          required
-          autoComplete="email"
-          style={INPUT}
-        />
-        <input
           type="password"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           placeholder="비밀번호"
           required
           autoComplete="current-password"
-          style={INPUT}
+          autoFocus
+          style={{
+            background:   "rgba(255,255,255,0.05)",
+            border:       "1px solid rgba(96,165,250,0.2)",
+            borderRadius: 8,
+            padding:      "10px 14px",
+            color:        "#e2e8f0",
+            fontSize:     13,
+            outline:      "none",
+            width:        "100%",
+          }}
         />
 
         {error && (

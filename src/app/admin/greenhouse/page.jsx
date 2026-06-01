@@ -184,7 +184,7 @@ export default function GreenhousePage() {
     const endClock   = fmtClock(endTime);
 
     setSaving(true);
-    await supabase.from("study_sessions").insert({
+    const { error } = await supabase.from("study_sessions").insert({
       subject_name:  subj.name,
       subject_color: subj.color,
       seconds,
@@ -193,6 +193,12 @@ export default function GreenhousePage() {
       end_clock:   endClock,
     });
     setSaving(false);
+
+    if (error) {
+      console.error("세션 저장 오류:", error.message);
+      alert(`저장 실패: ${error.message}\n\nSupabase에 start_clock, end_clock 컬럼이 필요합니다.`);
+      return;
+    }
 
     setRecords((prev) => [...prev, { name: subj.name, seconds, startClock, endClock }]);
 

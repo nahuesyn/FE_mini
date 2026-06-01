@@ -79,13 +79,6 @@ export default function AdminPage() {
   const [tutStep,   setTutStep]   = useState(0);
   const [tutDone,   setTutDone]   = useState(true);
 
-  /* 세션 내 인증 여부 확인 */
-  useEffect(() => {
-    if (sessionStorage.getItem("admin-unlocked")) {
-      setLocked(false);
-    }
-  }, []);
-
   /* 모달 열릴 때 input 포커스 */
   useEffect(() => {
     if (locked) setTimeout(() => inputRef.current?.focus(), 80);
@@ -102,20 +95,11 @@ export default function AdminPage() {
   const handleEnter = (e) => {
     e?.preventDefault();
     if (!pw.trim()) {
-      /* 빈 입력이면 흔들기 */
       setShake(true);
       setTimeout(() => setShake(false), 400);
       return;
     }
-    sessionStorage.setItem("admin-unlocked", "1");
     setLocked(false);
-  };
-
-  /* ─── 나가기 ─── */
-  const handleLock = () => {
-    sessionStorage.removeItem("admin-unlocked");
-    setPw("");
-    setLocked(true);
   };
 
   const finishTutorial = () => {
@@ -341,22 +325,6 @@ export default function AdminPage() {
           )}
 
           <BackToSquare />
-
-          {/* 나가기 버튼 */}
-          <button
-            onClick={handleLock}
-            style={{
-              position: "fixed", bottom: 20, right: 72,
-              background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)",
-              borderRadius: 8, padding: "6px 12px",
-              color: "rgba(248,113,113,0.6)", fontSize: 11, cursor: "pointer",
-              backdropFilter: "blur(8px)", zIndex: 50,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(248,113,113,0.6)")}
-          >
-            나가기
-          </button>
         </>
       )}
     </main>

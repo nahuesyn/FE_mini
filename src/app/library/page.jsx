@@ -372,7 +372,7 @@ export default function LibraryPage() {
 
                 {/* 내용 */}
                 {post.content && (
-                  <p className="text-white/45 text-xs leading-relaxed line-clamp-4">{post.content}</p>
+                  <p className="text-white/45 text-xs leading-relaxed line-clamp-4" style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
                 )}
 
                 {/* 키워드 */}

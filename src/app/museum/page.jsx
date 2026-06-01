@@ -156,7 +156,7 @@ export default function MuseumPage() {
                           style={{ background: st.bg, color: st.color }}>{st.label}</span>
                       </div>
                     </div>
-                    {p.desc && <p className="text-white/50 text-xs" style={{ whiteSpace: "pre-wrap" }}>{p.desc}</p>}
+                    {p.desc && <p className="text-white/50 text-xs">{p.desc}</p>}
                     {(p.startDate || p.endDate) && (
                       <p className="text-xs" style={{ color: "rgba(96,165,250,0.5)" }}>
                         {toMonthLabel(p.startDate) || "?"} ~ {toMonthLabel(p.endDate) || "진행중"}

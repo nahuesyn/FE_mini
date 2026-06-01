@@ -7,6 +7,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import MonthDrumPicker from "@/components/MonthDrumPicker";
 
 /* ─── 스타일 상수 ─── */
 const PAGE_BG = { background: "radial-gradient(ellipse at 60% 40%, #0A1520 0%, #060E18 100%)" };
@@ -710,15 +711,17 @@ export default function DashPage() {
                           </div>
                           {/* 기간 */}
                           <div className="flex items-center gap-2">
-                            <input type="month" value={editProj.startDate ? editProj.startDate.slice(0, 7) : ""}
-                              onChange={(e) => setEditProj((v) => ({ ...v, startDate: e.target.value }))}
-                              className="flex-1 bg-transparent text-xs outline-none"
-                              style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />
-                            <span className="text-xs" style={{ color: "rgba(96,165,250,0.3)" }}>~</span>
-                            <input type="month" value={editProj.endDate ? editProj.endDate.slice(0, 7) : ""}
-                              onChange={(e) => setEditProj((v) => ({ ...v, endDate: e.target.value }))}
-                              className="flex-1 bg-transparent text-xs outline-none"
-                              style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />
+                            <MonthDrumPicker
+                              value={editProj.startDate ? editProj.startDate.slice(0, 7) : ""}
+                              onChange={(v) => setEditProj((x) => ({ ...x, startDate: v }))}
+                              placeholder="시작월"
+                            />
+                            <span className="text-xs shrink-0" style={{ color: "rgba(96,165,250,0.3)" }}>~</span>
+                            <MonthDrumPicker
+                              value={editProj.endDate ? editProj.endDate.slice(0, 7) : ""}
+                              onChange={(v) => setEditProj((x) => ({ ...x, endDate: v }))}
+                              placeholder="종료월"
+                            />
                           </div>
                           {/* 상태 */}
                           <div className="flex gap-1">
@@ -857,15 +860,17 @@ export default function DashPage() {
                     </div>
                     {/* 기간 */}
                     <div className="flex items-center gap-2">
-                      <input type="month" value={newProject.startDate}
-                        onChange={(e) => setNewProject((p) => ({ ...p, startDate: e.target.value }))}
-                        className="flex-1 bg-transparent text-xs outline-none"
-                        style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />
-                      <span className="text-xs" style={{ color: "rgba(96,165,250,0.3)" }}>~</span>
-                      <input type="month" value={newProject.endDate}
-                        onChange={(e) => setNewProject((p) => ({ ...p, endDate: e.target.value }))}
-                        className="flex-1 bg-transparent text-xs outline-none"
-                        style={{ color: "rgba(96,165,250,0.6)", colorScheme: "dark", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 5, padding: "3px 6px" }} />
+                      <MonthDrumPicker
+                        value={newProject.startDate}
+                        onChange={(v) => setNewProject((p) => ({ ...p, startDate: v }))}
+                        placeholder="시작월"
+                      />
+                      <span className="text-xs shrink-0" style={{ color: "rgba(96,165,250,0.3)" }}>~</span>
+                      <MonthDrumPicker
+                        value={newProject.endDate}
+                        onChange={(v) => setNewProject((p) => ({ ...p, endDate: v }))}
+                        placeholder="종료월"
+                      />
                     </div>
                     <div className="flex gap-1">
                       {Object.entries(STATUS).map(([k, v]) => (

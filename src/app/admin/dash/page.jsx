@@ -253,7 +253,7 @@ export default function DashPage() {
     const updated = { ...editProj, thumbnailUrl: thumbUrl };
     setProjects((p) => p.map((x) => x.id === editingProjId ? { ...x, ...updated } : x));
 
-    const { error } = await supabase.from("village_projects").update({
+    const { data: updatedRows, error } = await supabase.from("village_projects").update({
       name:          editProj.title.trim(),
       description:   editProj.desc,
       status:        editProj.status,
@@ -262,11 +262,16 @@ export default function DashPage() {
       end_date:      editProj.endDate,
       url:           editProj.url,
       thumbnail_url: thumbUrl,
-    }).eq("id", editingProjId);
+    }).eq("id", editingProjId).select();
 
     if (error) {
-      console.error("프로젝트 저장 오류:", error.message, error.details, error.hint);
+      console.error("저장 오류:", error.message, error.details, error.hint);
       alert(`저장 실패: ${error.message}`);
+    } else if (!updatedRows || updatedRows.length === 0) {
+      console.warn("업데이트 0행 — ID 불일치 가능성:", editingProjId);
+      alert(`저장 실패: 해당 항목을 찾을 수 없습니다. (ID: ${editingProjId})`);
+    } else {
+      console.log("저장 성공:", updatedRows[0]);
     }
 
     setEditingProjId(null);
@@ -735,23 +740,6 @@ export default function DashPage() {
                                 }}>
                                 {v.label}
                               </button>
-                            ))}
-                          </div>
-                          {/* 색상 */}
-                          <div className="flex flex-col gap-1">
-                            {PROJECT_COLORS.map((row, ri) => (
-                              <div key={ri} className="flex gap-1.5">
-                                {row.map((c) => (
-                                  <button key={c} onClick={() => setEditProj((ep) => ({ ...ep, color: c }))}
-                                    className="w-4 h-4 rounded-full transition hover:scale-110"
-                                    style={{
-                                      background: c,
-                                      outline: editProj.color === c ? `2px solid ${c}` : "none",
-                                      outlineOffset: 2,
-                                      opacity: editProj.color === c ? 1 : 0.5,
-                                    }} />
-                                ))}
-                              </div>
                             ))}
                           </div>
                           {/* 핀 고정 */}

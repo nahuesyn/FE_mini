@@ -36,7 +36,8 @@ const PANEL = {
 };
 
 export default function MuseumPage() {
-  const [activeFilter, setActiveFilter] = useState("done"); // 기본: 완료 프로젝트
+  const [activeFilter, setActiveFilter] = useState("done");
+  const [sortMode,     setSortMode]     = useState("custom");
   const [projects,     setProjects]     = useState([]);
   const [loading,      setLoading]      = useState(true);
 
@@ -46,6 +47,7 @@ export default function MuseumPage() {
       const { data } = await supabase
         .from("village_projects")
         .select("*")
+        .order("sort_order")
         .order("created_at");
       if (data) setProjects(data.map((p) => ({
         id:           p.id,
@@ -59,23 +61,20 @@ export default function MuseumPage() {
         url:          p.url || "",
         thumbnailUrl: p.thumbnail_url || "",
         createdAt:    p.created_at,
+        sortOrder:    p.sort_order ?? 0,
       })));
       setLoading(false);
     };
     load();
   }, []);
 
-  // 정렬: 고정 → 완료(최신순) → 진행중(최신순)
   const sorted = [...projects]
     .filter((p) => p.status !== "idea")
-    .sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      if (a.status !== b.status) {
-        if (a.status === "done") return -1;
-        if (b.status === "done") return 1;
-      }
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    });
+    .sort((a, b) =>
+      sortMode === "time"
+        ? new Date(b.createdAt) - new Date(a.createdAt)
+        : a.sortOrder - b.sortOrder
+    );
 
   const filtered = activeFilter
     ? sorted.filter((p) => p.status === activeFilter)
@@ -97,23 +96,38 @@ export default function MuseumPage() {
           <p className="text-blue-200/60 text-sm mt-1">작업한 프로젝트들을 한눈에</p>
         </div>
 
-        {/* 필터 */}
-        <div className="w-full max-w-2xl flex gap-2">
-          {FILTERS.map((f) => {
-            const active = activeFilter === f.value;
-            return (
-              <button key={f.label}
-                onClick={() => setActiveFilter(f.value)}
-                className="px-4 py-1.5 rounded-full text-xs font-medium transition"
+        {/* 필터 + 정렬 */}
+        <div className="w-full max-w-2xl flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {FILTERS.map((f) => {
+              const active = activeFilter === f.value;
+              return (
+                <button key={f.label}
+                  onClick={() => setActiveFilter(f.value)}
+                  className="px-4 py-1.5 rounded-full text-xs font-medium transition"
+                  style={{
+                    background: active ? "rgba(96,165,250,0.2)"  : "rgba(255,255,255,0.06)",
+                    color:      active ? "#60a5fa"                : "rgba(255,255,255,0.5)",
+                    border:    `1px solid ${active ? "rgba(96,165,250,0.4)" : "rgba(255,255,255,0.1)"}`,
+                  }}>
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-1.5 shrink-0">
+            {[{ val: "custom", label: "직접순" }, { val: "time", label: "시간순" }].map(({ val, label }) => (
+              <button key={val} onClick={() => setSortMode(val)}
+                className="px-3 py-1 rounded-full text-xs font-medium transition"
                 style={{
-                  background: active ? "rgba(96,165,250,0.2)"  : "rgba(255,255,255,0.06)",
-                  color:      active ? "#60a5fa"                : "rgba(255,255,255,0.5)",
-                  border:    `1px solid ${active ? "rgba(96,165,250,0.4)" : "rgba(255,255,255,0.1)"}`,
+                  background: sortMode === val ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.05)",
+                  color:      sortMode === val ? "#60a5fa"                : "rgba(255,255,255,0.35)",
+                  border:    `1px solid ${sortMode === val ? "rgba(96,165,250,0.4)" : "rgba(255,255,255,0.08)"}`,
                 }}>
-                {f.label}
+                {label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
         {/* 프로젝트 그리드 */}

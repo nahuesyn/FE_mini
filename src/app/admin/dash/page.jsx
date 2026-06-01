@@ -77,6 +77,7 @@ const rowToProject = (r) => ({
   url:          r.url || "",
   thumbnailUrl: r.thumbnail_url || "",
   createdAt:    r.created_at,
+  sortOrder:    r.sort_order ?? 0,
   tech: [],
 });
 
@@ -122,6 +123,11 @@ export default function DashPage() {
   const [dragOverId, setDragOverId] = useState(null);
   const dragSrcIdx = useRef(null);
 
+  /* ─── 프로젝트 정렬 ─── */
+  const [projSortMode,    setProjSortMode]    = useState("custom");
+  const [projDragOverId,  setProjDragOverId]  = useState(null);
+  const projDragSrcIdx = useRef(null);
+
   /* ─── 투두 인라인 편집 ─── */
   const [editingId,  setEditingId]  = useState(null);
   const [editText,   setEditText]   = useState("");
@@ -163,7 +169,7 @@ export default function DashPage() {
       const [{ data: td }, { data: ev }, { data: pj }] = await Promise.all([
         supabase.from("village_todos").select("*").order("sort_order").order("created_at"),
         supabase.from("village_events").select("*").order("created_at"),
-        supabase.from("village_projects").select("*").order("created_at"),
+        supabase.from("village_projects").select("*").order("sort_order").order("created_at"),
       ]);
       if (td) setTodos(td.map(rowToTodo));
       if (ev) setEvents(ev.map(rowToEvent));
@@ -242,6 +248,38 @@ export default function DashPage() {
   };
 
   const handleDragEnd = () => { dragSrcIdx.current = null; setDragOverId(null); };
+
+  /* ─── 프로젝트 드래그 정렬 ─── */
+  const projDragStart = (idx) => { projDragSrcIdx.current = idx; };
+  const projDragOver  = (e, id) => { e.preventDefault(); setProjDragOverId(id); };
+  const projDrop      = async (e, dropIdx) => {
+    e.preventDefault();
+    const src = projDragSrcIdx.current;
+    if (src === null || src === dropIdx) { setProjDragOverId(null); return; }
+
+    const displayList = projSortMode === "time"
+      ? [...projects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      : [...projects];
+
+    const reordered = [...displayList];
+    const [moved] = reordered.splice(src, 1);
+    reordered.splice(dropIdx, 0, moved);
+
+    // sort_order 값 재배정 후 전체 projects 배열 업데이트
+    const idxMap = Object.fromEntries(reordered.map((p, i) => [p.id, i]));
+    setProjects((prev) => [...prev].map((p) => ({ ...p, sortOrder: idxMap[p.id] ?? p.sortOrder }))
+      .sort((a, b) => a.sortOrder - b.sortOrder));
+
+    // DB 업데이트
+    await Promise.all(reordered.map((p, i) =>
+      supabase.from("village_projects").update({ sort_order: i }).eq("id", p.id)
+    ));
+
+    projDragSrcIdx.current = null;
+    setProjDragOverId(null);
+    setProjSortMode("custom"); // 드래그하면 자동으로 직접 모드로
+  };
+  const projDragEnd = () => { projDragSrcIdx.current = null; setProjDragOverId(null); };
 
   /* ─── 핸들러 ─── */
   /* ─── 프로젝트 핀 토글 (로컬 상태만 — DB pinned 컬럼 추가 전까지) ─── */
@@ -660,21 +698,39 @@ export default function DashPage() {
             {leftTab === "프로젝트" && (
               <div style={{ ...PANEL, padding: "16px" }} className="flex flex-col gap-3">
 
-                {/* 카테고리 필터 */}
-                <div className="flex gap-1.5 flex-wrap">
-                  {[
-                    { label: "전체",    value: null    },
-                    { label: "진행중",  value: "wip"   },
-                    { label: "완료",    value: "done"  },
-                    { label: "아이디어", value: "idea" },
-                  ].map(({ label, value }) => (
-                    <FilterBtn key={label} active={projFilter === value} onClick={() => setProjFilter(value)}>
-                      {label}
-                    </FilterBtn>
-                  ))}
+                {/* 카테고리 필터 + 정렬 토글 */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[
+                      { label: "전체",    value: null    },
+                      { label: "진행중",  value: "wip"   },
+                      { label: "완료",    value: "done"  },
+                      { label: "아이디어", value: "idea" },
+                    ].map(({ label, value }) => (
+                      <FilterBtn key={label} active={projFilter === value} onClick={() => setProjFilter(value)}>
+                        {label}
+                      </FilterBtn>
+                    ))}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {[{ val: "custom", label: "직접" }, { val: "time", label: "시간순" }].map(({ val, label }) => (
+                      <button key={val} onClick={() => setProjSortMode(val)}
+                        className="text-xs px-2 py-0.5 rounded-md transition"
+                        style={{
+                          background: projSortMode === val ? "rgba(96,165,250,0.18)" : "transparent",
+                          color:      projSortMode === val ? "#60a5fa" : "rgba(96,165,250,0.35)",
+                          border:    `1px solid ${projSortMode === val ? "rgba(96,165,250,0.35)" : "rgba(96,165,250,0.12)"}`,
+                        }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {(projFilter ? projects.filter((p) => p.status === projFilter) : projects).map((p, idx, arr) => {
+                {(projSortMode === "time"
+                  ? [...projects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  : [...projects]
+                ).filter((p) => !projFilter || p.status === projFilter).map((p, idx, arr) => {
                   const st        = STATUS[p.status] ?? STATUS.wip;
                   const pColor    = p.color || st.color;
                   const projTodos = todos.filter((t) => t.projectId === p.id);
@@ -683,8 +739,19 @@ export default function DashPage() {
                   const isEditing = editingProjId === p.id;
 
                   return (
-                    <div key={p.id} className="flex flex-col gap-1.5 pb-3"
-                      style={{ borderBottom: idx < arr.length - 1 ? "1px solid rgba(96,165,250,0.08)" : "none" }}>
+                    <div key={p.id}
+                      draggable={projSortMode === "custom"}
+                      onDragStart={() => projDragStart(idx)}
+                      onDragOver={(e) => projDragOver(e, p.id)}
+                      onDrop={(e) => projDrop(e, idx)}
+                      onDragEnd={projDragEnd}
+                      className="flex flex-col gap-1.5 pb-3"
+                      style={{
+                        borderBottom: idx < arr.length - 1 ? "1px solid rgba(96,165,250,0.08)" : "none",
+                        opacity:      projDragOverId === p.id ? 0.5 : 1,
+                        cursor:       projSortMode === "custom" ? "grab" : "default",
+                        transition:   "opacity 0.15s",
+                      }}>
 
                       {isEditing ? (
                         /* ── 수정 폼 ── */

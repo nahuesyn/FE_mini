@@ -48,9 +48,12 @@ export default function LibraryPage() {
   const [posts,           setPosts]           = useState([]);
 
   /* ─── 편집 상태 ─── */
-  const [editingPostId, setEditingPostId] = useState(null);
-  const [editPost,      setEditPost]      = useState(null);
-  const [editKeyword,   setEditKeyword]   = useState("");
+  const [editingPostId,   setEditingPostId]   = useState(null);
+  const [editPost,        setEditPost]        = useState(null);
+  const [editKeyword,     setEditKeyword]     = useState("");
+
+  /* ─── 펼치기 상태 ─── */
+  const [expandedPostId, setExpandedPostId] = useState(null);
 
   /* localStorage를 useEffect로 읽어 state로 관리 */
   const [subjectMap,  setSubjectMap]  = useState({});
@@ -372,7 +375,20 @@ export default function LibraryPage() {
 
                 {/* 내용 */}
                 {post.content && (
-                  <p className="text-white/45 text-xs leading-relaxed line-clamp-4" style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
+                  <div>
+                    <p className={`text-white/45 text-xs leading-relaxed ${expandedPostId === post.id ? "" : "line-clamp-4"}`}
+                      style={{ whiteSpace: "pre-wrap" }}>
+                      {post.content}
+                    </p>
+                    <button
+                      onClick={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)}
+                      className="mt-1.5 text-xs transition"
+                      style={{ color: "rgba(96,165,250,0.5)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(96,165,250,0.9)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(96,165,250,0.5)")}>
+                      {expandedPostId === post.id ? "접기 ▲" : "자세히 보기 ▼"}
+                    </button>
+                  </div>
                 )}
 
                 {/* 키워드 */}

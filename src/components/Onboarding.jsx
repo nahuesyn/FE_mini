@@ -55,6 +55,13 @@ export default function Onboarding({ isLeaving }) {
     navigate(zone.target);
   };
 
+  const handleSplashWheel = (event) => {
+    if (!introDone) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
   useEffect(() => {
     const visibleTimer = setTimeout(() => setVisible(true), 100);
     const introTimer = setTimeout(() => setIntroDone(true), 2800);
@@ -67,6 +74,7 @@ export default function Onboarding({ isLeaving }) {
   return (
     <section
       className="relative w-full h-screen overflow-hidden"
+      onWheel={handleSplashWheel}
       style={{
         backgroundImage: "url('/온보딩화면.png')",
         backgroundSize: 'cover',

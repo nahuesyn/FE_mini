@@ -49,6 +49,12 @@ const TODAY = new Date();
 const toKey = (y, m, d) =>
   `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
+/* YYYY-MM → YYYY-MM-01 변환 (Supabase date 타입 대응) */
+const toDateVal = (v) => {
+  if (!v) return null;
+  return v.length === 7 ? `${v}-01` : v;
+};
+
 /* ─── 날짜 → 월 표시 (2026-05 → 2026년 5월) ─── */
 const toMonthLabel = (d) => {
   if (!d) return "";
@@ -258,8 +264,8 @@ export default function DashPage() {
       description:   editProj.desc,
       status:        editProj.status,
       color:         editProj.color,
-      start_date:    editProj.startDate,
-      end_date:      editProj.endDate,
+      start_date:    toDateVal(editProj.startDate),
+      end_date:      toDateVal(editProj.endDate),
       url:           editProj.url,
       thumbnail_url: thumbUrl,
     }).eq("id", editingProjId).select();
@@ -340,8 +346,8 @@ export default function DashPage() {
       description:   newProject.desc,
       status:        newProject.status,
       color:         newProject.color,
-      start_date:    newProject.startDate,
-      end_date:      newProject.endDate,
+      start_date:    toDateVal(newProject.startDate),
+      end_date:      toDateVal(newProject.endDate),
       url:           newProject.url,
       thumbnail_url: thumbUrl,
     }).select().single();

@@ -28,13 +28,51 @@ const todayStr  = () => new Date().toISOString().split("T")[0];
 const fmtClock  = (d) =>
   `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
-export default function GreenhousePage() {
-  const [seconds,   setSeconds]   = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [subject,   setSubject]   = useState(null);
+/* ─── 타이머 localStorage 영속화 ─── */
+const TIMER_KEY = "gh-timer";
 
-  /* 세션 시작 시각 추적 (ref = 리렌더 없이 유지) */
-  const sessionStartAt = useRef(null);
+const getPersistedTimer = () => {
+  try {
+    const raw = localStorage.getItem(TIMER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+};
+
+const savePersistedTimer = (data) => {
+  try { localStorage.setItem(TIMER_KEY, JSON.stringify(data)); } catch {}
+};
+
+const clearPersistedTimer = () => {
+  try { localStorage.removeItem(TIMER_KEY); } catch {}
+};
+
+export default function GreenhousePage() {
+  /* ─── 타이머 상태 — localStorage에서 복원 ─── */
+  const [seconds, setSeconds] = useState(() => {
+    const p = getPersistedTimer();
+    if (!p) return 0;
+    /* 실행 중이었다면 자리를 비운 사이 흐른 시간도 합산 */
+    if (p.running && p.resumedAt) {
+      return p.accumulated + Math.floor((Date.now() - p.resumedAt) / 1000);
+    }
+    return p.accumulated ?? 0;
+  });
+
+  const [isRunning, setIsRunning] = useState(() => {
+    const p = getPersistedTimer();
+    return p?.running ?? false;
+  });
+
+  const [subject, setSubject] = useState(() => {
+    const p = getPersistedTimer();
+    return p?.subjectId ?? null;
+  });
+
+  /* 세션 시작 시각 — state로 관리해야 JSX에서 리렌더 됨 */
+  const [sessionStartAt, setSessionStartAt] = useState(() => {
+    const p = getPersistedTimer();
+    return p?.sessionStart ? new Date(p.sessionStart) : null;
+  });
 
   /* 오늘 개별 세션 기록 */
   const [records, setRecords] = useState([]);
@@ -101,11 +139,35 @@ export default function GreenhousePage() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
-  /* ─── 시작/일시정지 토글 — 첫 시작 시 시각 기록 ─── */
+  /* ─── 시작/일시정지 토글 ─── */
   const handleToggle = () => {
-    if (!isRunning && seconds === 0) {
-      /* 새 세션 시작 */
-      sessionStartAt.current = new Date();
+    const now = Date.now();
+    if (!isRunning) {
+      /* 시작 or 재개 */
+      let sessionStart = sessionStartAt;
+      if (seconds === 0) {
+        /* 새 세션 — 시작 시각 기록 */
+        sessionStart = new Date(now);
+        setSessionStartAt(sessionStart);
+      }
+      /* localStorage 저장: accumulated = 현재 seconds, resumedAt = 지금 */
+      savePersistedTimer({
+        running:      true,
+        accumulated:  seconds,
+        resumedAt:    now,
+        sessionStart: sessionStart ? sessionStart.getTime() : now,
+        subjectId:    subject,
+      });
+    } else {
+      /* 일시정지 — 현재 accumulated 저장, resumedAt 제거 */
+      const p = getPersistedTimer();
+      savePersistedTimer({
+        running:      false,
+        accumulated:  seconds,
+        resumedAt:    null,
+        sessionStart: p?.sessionStart ?? now,
+        subjectId:    subject,
+      });
     }
     setIsRunning((v) => !v);
   };
@@ -117,7 +179,7 @@ export default function GreenhousePage() {
     if (!subj) return;
 
     const endTime    = new Date();
-    const startTime  = sessionStartAt.current ?? endTime;
+    const startTime  = sessionStartAt ?? endTime;
     const startClock = fmtClock(startTime);
     const endClock   = fmtClock(endTime);
 
@@ -134,7 +196,9 @@ export default function GreenhousePage() {
 
     setRecords((prev) => [...prev, { name: subj.name, seconds, startClock, endClock }]);
 
-    sessionStartAt.current = null;
+    /* localStorage 초기화 */
+    clearPersistedTimer();
+    setSessionStartAt(null);
     setIsRunning(false);
     setSeconds(0);
   };
@@ -201,9 +265,9 @@ export default function GreenhousePage() {
         </div>
 
         {/* 시작 시각 표시 */}
-        {sessionStartAt.current && (
+        {sessionStartAt && (
           <p className="text-xs -mt-2" style={{ color: "rgba(74,222,128,0.45)" }}>
-            {fmtClock(sessionStartAt.current)} 시작
+            {fmtClock(sessionStartAt)} 시작
           </p>
         )}
 
@@ -247,7 +311,12 @@ export default function GreenhousePage() {
                     style={{ color: s.color, width: Math.max(s.name.length * 10, 28) }} />
                 </div>
               ) : (
-                <button onClick={() => setSubject(s.id)}
+                <button onClick={() => {
+                  setSubject(s.id);
+                  /* 타이머가 저장 중이면 과목도 함께 갱신 */
+                  const p = getPersistedTimer();
+                  if (p) savePersistedTimer({ ...p, subjectId: s.id });
+                }}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium transition"
                   style={{
                     background: subject === s.id ? s.bg : "rgba(255,255,255,0.04)",

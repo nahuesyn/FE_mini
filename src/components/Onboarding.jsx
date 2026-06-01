@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const LAND_PORTFOLIO_URL = 'https://village-portfolio.pages.dev/';
+
 const ZONES = [
   {
     id: 'sky',
@@ -22,7 +24,8 @@ const ZONES = [
     labelY: '72%',
     labelColor: '#b0e8a0',
     hint: '클릭하여 대지 세계로',
-    target: '/land',
+    target: LAND_PORTFOLIO_URL,
+    external: true,
   },
   {
     id: 'sea',
@@ -42,6 +45,15 @@ export default function Onboarding({ isLeaving }) {
   const [introDone, setIntroDone] = useState(false);
   const [hovered, setHovered] = useState(null);
   const navigate = useNavigate();
+
+  const handleZoneClick = (zone) => {
+    if (zone.external) {
+      window.location.assign(zone.target);
+      return;
+    }
+
+    navigate(zone.target);
+  };
 
   useEffect(() => {
     const visibleTimer = setTimeout(() => setVisible(true), 100);
@@ -86,7 +98,7 @@ export default function Onboarding({ isLeaving }) {
             points={zone.points}
             fill={hovered === zone.id ? zone.hoverFill : 'transparent'}
             style={{ cursor: introDone ? 'pointer' : 'default', transition: 'fill 0.35s ease' }}
-            onClick={() => navigate(zone.target)}
+            onClick={() => handleZoneClick(zone)}
             onMouseEnter={() => setHovered(zone.id)}
             onMouseLeave={() => setHovered(null)}
           />

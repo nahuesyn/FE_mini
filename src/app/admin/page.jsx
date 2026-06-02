@@ -79,6 +79,13 @@ export default function AdminPage() {
   const [tutStep,   setTutStep]   = useState(0);
   const [tutDone,   setTutDone]   = useState(true);
 
+  /* 세션 내 인증 여부 확인 — 이미 입장한 적 있으면 모달 스킵 */
+  useEffect(() => {
+    if (sessionStorage.getItem("admin-unlocked")) {
+      setLocked(false);
+    }
+  }, []);
+
   /* 모달 열릴 때 input 포커스 */
   useEffect(() => {
     if (locked) setTimeout(() => inputRef.current?.focus(), 80);
@@ -99,6 +106,7 @@ export default function AdminPage() {
       setTimeout(() => setShake(false), 400);
       return;
     }
+    sessionStorage.setItem("admin-unlocked", "1");
     setLocked(false);
   };
 
